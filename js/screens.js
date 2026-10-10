@@ -1,56 +1,62 @@
 'use strict';
 // ===== Ace-Af team – screens, HUD, loop =====
 const GAME_TITLE = 'Ace-Af team';
-const APP = { state: 'loading', t: 0, sel: 0, comic: null, results: null, paused: false, cardBlob: null, cardURL: null };
+const APP = { state: 'loading', t: 0, sel: 0, mode: 'story', menu: 0, comic: null, results: null, paused: false, cardBlob: null, cardURL: null };
 const COMIC_INTRO = [
   { bg: 'dark', chars: [], cap: 'תל אביב. לילה אחד.', lines: [{ who: '', text: 'תאגיד "מגדלי עזאזל" קונה את העיר – רחוב אחרי רחוב. מי שלא מוכר – נעלם.' }] },
-  { bg: 'fire', chars: ['Benjo'], cap: 'המוסך של Benjo עלה באש.', lines: [{ who: 'Benjo', text: 'שרפו לי את המוסך. עכשיו תורכם.', vo: 'ben_taunt' }] },
-  { bg: 'night', chars: ['AceAf', 'Daniel'], cap: 'לבר של Ace-Af הגיעו "גובים". הסטודיו של Daniel נשרף.', lines: [{ who: 'Ace-Af', text: 'אני לא מחפש צרות.', vo: 'ace_taunt' }, { who: 'Daniel', text: 'זה הכל?', vo: 'dan_taunt' }] },
-  { bg: 'purple', chars: ['Ravid'], cap: 'Ravid מצאה את הרשימה. כל השמות מובילים לגובה אחד – בשוק.', lines: [{ who: 'Ravid', text: 'יש לי תיק על כל אחד מכם.', vo: 'rav_taunt' }] },
-  { bg: 'dawn', chars: ['AceAf', 'Daniel', 'Ravid', 'Benjo'], cap: 'ארבעה זרים. אויב אחד.', lines: [{ who: '', text: 'פרק 1 – השוק. קדימה!' }] },
+  { bg: 'fire', chars: ['Benjo'], cap: 'המוסך של Benjo עלה באש.', lines: [{ who: 'Benjo', text: 'עכשיו אני כועס!', vo: 'benjo_2' }] },
+  { bg: 'night', chars: ['AceAf', 'Daniel'], cap: 'לבר של Ace-Af הגיעו "גובים". הסטודיו של Daniel נשרף.', lines: [{ who: 'Ace-Af', text: 'הגיע הזמן לסדר חשבון.', vo: 'ace_1' }, { who: 'Daniel', text: 'הם בחרו בסטודיו הלא נכון.' }] },
+  { bg: 'purple', chars: ['Ravid'], cap: 'Ravid מצאה את הרשימה. כל השמות מובילים לגובה אחד – בשוק.', lines: [{ who: 'Ravid', text: 'בשקט.', vo: 'ravid_1' }] },
+  { bg: 'dawn', chars: ['AceAf', 'Daniel', 'Ravid', 'Benjo'], cap: 'ארבעה זרים. אויב אחד.', lines: [{ who: '', text: 'יוצאים לשוק.' }] },
 ];
 const COMIC_OUTRO = [
-  { bg: 'fire', chars: ['boss'], cap: 'הסוחר על הרצפה.', lines: [{ who: 'הסוחר', text: 'טוב, טוב... הדוכן סגור.' }] },
-  { bg: 'night', chars: ['Ravid', 'AceAf'], cap: 'בכיס שלו: כרטיס ביקור של "מגדלי עזאזל"... וכתובת בנמל יפו.', lines: [{ who: 'Ravid', text: 'הנמל. מחר בלילה.' }, { who: 'Ace-Af', text: 'אני לא מחפש צרות.', vo: 'ace_taunt' }] },
+  { bg: 'fire', chars: ['boss'], cap: 'הסוחר על הרצפה.', lines: [{ who: 'הסוחר', text: 'הדוכן סגור... בינתיים.' }] },
+  { bg: 'night', chars: ['Ravid', 'AceAf'], cap: 'בכיס שלו: כרטיס ביקור של "מגדלי עזאזל"... וכתובת בנמל יפו.', lines: [{ who: 'Ravid', text: 'הנמל. מחר בלילה.' }, { who: 'Ace-Af', text: 'העיר שלנו.', vo: 'ace_3' }] },
   { bg: 'dawn', chars: ['Daniel', 'Benjo'], cap: 'פרק 1 · שלב 2 – הנמל', lines: [{ who: '', text: 'בקרוב...' }] },
 ];
 function startComic(pages, onDone) { APP.state = 'comic'; APP.comic = { pages, p: 0, l: 0, t: 0, onDone }; playComicLine(); }
 function playComicLine() { const c = APP.comic, pg = c.pages[c.p], ln = pg.lines[c.l]; c.t = 0; if (ln && ln.vo) voice(ln.vo, ln.text, ln.who); else if (curVo) { try { curVo.stop(); } catch (e) { } } subtitle = null; }
 function comicNext() { const c = APP.comic; const pg = c.pages[c.p]; if (c.l < pg.lines.length - 1) c.l++; else { c.p++; c.l = 0; if (c.p >= c.pages.length) { const f = c.onDone; APP.comic = null; f(); return; } } playComicLine(); }
-function startGame() { newGame(APP.sel); APP.state = 'play'; APP.paused = false; touchControlsActive = true; clearPressed(); taps.length = 0; }
+function startGame() { newGame(APP.sel, APP.mode); APP.state = 'play'; APP.paused = false; touchControlsActive = true; clearPressed(); taps.length = 0; }
 function endStage() {
   touchControlsActive = false; const win = G.win;
-  APP.results = { win, score: G.score + (win ? Math.max(0, Math.round(3000 - G.time * 10)) : 0), time: G.time, maxCombo: G.maxCombo, kos: G.kos, cash: G.cash, card: G.card, team: G.team.map(t => ({ hp: t.hp, down: t.down })) };
-  const best = +(localStorage.getItem('aceaf_best') || 0); APP.results.best = Math.max(best, APP.results.score); localStorage.setItem('aceaf_best', APP.results.best);
+  const sixty = G.mode === 'sixty';
+  APP.results = { mode: G.mode, win, score: G.score + (win && !sixty ? Math.max(0, Math.round(3000 - G.time * 10)) : 0), time: sixty ? 60 - G.timeLeft : G.time, maxCombo: G.maxCombo, kos: G.kos, cash: G.cash, card: G.card, hero: CHARS[G.startChar].name, team: G.team.map(t => ({ hp: t.hp, down: t.down })) };
+  const bk = sixty ? 'aceaf_best60' : 'aceaf_best';
+  const best = +(localStorage.getItem(bk) || 0); APP.results.best = Math.max(best, APP.results.score); localStorage.setItem(bk, APP.results.best);
   APP.results.newBest = APP.results.score > best;
-  if (win) startComic(COMIC_OUTRO, showResults); else showResults();
+  if (!win) stinger('lose'); else if (sixty) stinger('win');
+  if (win && !sixty) startComic(COMIC_OUTRO, showResults); else showResults();
 }
-function showResults() { APP.state = 'results'; playMusic('music_stage'); makeScoreCard(); }
+function showResults() { APP.state = 'results'; playMusic('music_theme'); makeScoreCard(); }
 function fmtTime(t) { const m = Math.floor(t / 60), s = Math.floor(t % 60); return `${m}:${String(s).padStart(2, '0')}`; }
 
 // ---------- score card (canvas -> PNG) ----------
 function makeScoreCard() {
   const R = APP.results; const c = document.createElement('canvas'); c.width = 1080; c.height = 1350; const x = c.getContext('2d');
   const g = x.createLinearGradient(0, 0, 0, 1350); g.addColorStop(0, '#2a0d14'); g.addColorStop(1, '#0d0710'); x.fillStyle = g; x.fillRect(0, 0, 1080, 1350);
-  if (IMG.bg_back) { x.globalAlpha = 0.45; x.drawImage(IMG.bg_back, 0, 0, 1080 * IMG.bg_back.width / IMG.bg_back.width, 380 * 1080 / IMG.bg_back.width * (IMG.bg_back.width / 1080)); x.globalAlpha = 1; }
+  const bgm = IMG.bg_market; if (bgm) { x.globalAlpha = 0.5; const sh = bgm.height, sw = sh * 1080 / 700; x.drawImage(bgm, (bgm.width - sw) * 0.35, 0, sw, sh, 0, 0, 1080, 700); x.globalAlpha = 1; }
+  const six = R.mode === 'sixty';
   const T = (s, X, Y, sz, col = '#fff', w = 800, al = 'center') => { x.font = `${w} ${sz}px ${FONT}`; x.textAlign = al; x.textBaseline = 'middle'; x.direction = /[\u0590-\u05FF]/.test(s) ? 'rtl' : 'ltr'; x.lineWidth = sz / 7; x.strokeStyle = '#000'; x.lineJoin = 'round'; x.strokeText(s, X, Y); x.fillStyle = col; x.fillText(s, X, Y); };
-  T(GAME_TITLE, 540, 110, 110, '#ffd23f', 900); T('פרק 1 · השוק', 540, 205, 46, '#fff', 700);
+  T(GAME_TITLE, 540, 110, 110, '#ffd23f', 900); T(six ? 'אתגר 60 שניות · השוק' : 'פרק 1 · השוק', 540, 205, 46, six ? '#ff8a3d' : '#fff', 700);
   const heroes = ['AceAf', 'Daniel', 'Ravid', 'Benjo']; heroes.forEach((h, i) => { const im = IMG['hero_' + h]; if (!im) return; const hh = 420, ww = im.width * hh / im.height; x.drawImage(im, 135 + i * 270 - ww / 2, 250, ww, hh); });
   x.fillStyle = 'rgba(0,0,0,0.6)'; x.fillRect(60, 700, 960, 520);
-  T(R.win ? 'השלב הושלם!' : 'הצוות נפל...', 540, 760, 64, R.win ? '#7dff8a' : '#ff6b6b', 900);
+  T(six ? (R.win ? 'שרדתם 60 שניות!' : 'הצוות נפל...') : (R.win ? 'השלב הושלם!' : 'הצוות נפל...'), 540, 760, 64, R.win ? '#7dff8a' : '#ff6b6b', 900);
   T(`${R.score.toLocaleString('en-US')}`, 540, 870, 120, '#ffd23f', 900); T('ניקוד', 540, 950, 40, '#ddd', 600);
-  const st = [['זמן', fmtTime(R.time)], ['רצף מקסימלי', '×' + R.maxCombo], ['נוקאאוטים', String(R.kos)], ['קלף לוחם', R.card ? '1/60 ★' : '0/60']];
+  const st = six ? [['נוקאאוטים', String(R.kos)], ['רצף מקסימלי', '×' + R.maxCombo], ['כסף', '₪' + R.cash], ['לוחם פותח', R.hero]]
+    : [['זמן', fmtTime(R.time)], ['רצף מקסימלי', '×' + R.maxCombo], ['נוקאאוטים', String(R.kos)], ['קלף לוחם', R.card ? '1/60 ★' : '0/60']];
   st.forEach((s, i) => { const X = 920 - i * 260; T(s[1], X - 10, 1060, 54, '#fff', 900); T(s[0], X - 10, 1120, 30, '#bbb', 600); });
-  T('מי משיג יותר?', 540, 1280, 44, '#fff', 700);
+  T(six ? 'שברו את השיא שלי ב-60 שניות!' : 'מי משיג יותר?', 540, 1280, 44, '#fff', 700);
   c.toBlob(b => { APP.cardBlob = b; if (APP.cardURL) URL.revokeObjectURL(APP.cardURL); APP.cardURL = URL.createObjectURL(b); const im = new Image(); im.src = APP.cardURL; APP.cardImg = im; }, 'image/png');
 }
 async function shareCard() {
   if (!APP.cardBlob) return;
-  const file = new File([APP.cardBlob], 'aceaf-team-score.png', { type: 'image/png' });
+  const fname = APP.results.mode === 'sixty' ? 'aceaf-team-60s.png' : 'aceaf-team-score.png';
+  const file = new File([APP.cardBlob], fname, { type: 'image/png' });
   try {
-    if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: GAME_TITLE, text: `${GAME_TITLE} – ${APP.results.score} נקודות. מי משיג יותר?` }); return; }
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: GAME_TITLE, text: `${GAME_TITLE} – ${APP.results.score} נקודות${APP.results.mode === 'sixty' ? ' באתגר 60 שניות' : ''}. מי משיג יותר?` }); return; }
   } catch (e) { if (e && e.name === 'AbortError') return; }
-  const a = document.createElement('a'); a.href = APP.cardURL; a.download = 'aceaf-team-score.png'; document.body.appendChild(a); a.click(); a.remove();
+  const a = document.createElement('a'); a.href = APP.cardURL; a.download = fname; document.body.appendChild(a); a.click(); a.remove();
   APP.toast = { text: 'כרטיס הציון נשמר', t: 2 };
 }
 
@@ -74,7 +80,11 @@ function drawHUD() {
   txt(`ניקוד ${G.score.toLocaleString('en-US')}`, 18, 26, 22, '#ffd23f', 'left', 900, '#000', 5);
   txt(`₪${G.cash}`, 18, 54, 20, '#7dff8a', 'left', 800, '#000', 4);
   if (usingTouch) { ctx.fillStyle = 'rgba(0,0,0,0.5)'; rrect(16, 72, 40, 34, 8); ctx.fill(); txt('II', 36, 89, 18, '#fff', 'center', 900); }
-  txt(fmtTime(G.time), W / 2 - 10, 22, 20, '#fff', 'center', 800, '#000', 4);
+  if (G.mode === 'sixty') { const tl = Math.ceil(G.timeLeft), hot = G.timeLeft <= 10; const k = hot ? 1 + 0.15 * Math.max(0, Math.sin(G.t * 12)) : 1;
+    txt(String(tl), W / 2 - 10, 34, 44 * k, hot ? '#ff4040' : '#fff', 'center', 900, '#000', 7);
+    if (G.countdown > 0) { const n = Math.ceil(G.countdown - 0.4); const f = (G.countdown - 0.4) % 1; txt(n > 0 ? String(n) : 'קדימה!', W / 2, H / 2 - 40, (n > 0 ? 140 : 90) * (1 + f * 0.3), '#ffd23f', 'center', 900, '#000', 12);
+      txt('אתגר 60 שניות – כמה שיותר נקודות!', W / 2, H / 2 + 50, 26, '#fff', 'center', 800, '#000', 6); } }
+  else txt(fmtTime(G.time), W / 2 - 10, 22, 20, '#fff', 'center', 800, '#000', 4);
   if (G.combo >= 2) { const k = 1 + Math.max(0, G.comboT - 1.4) * 0.8; txt(`רצף ×${G.combo}`, 120, 140, 30 * k, G.combo >= 10 ? '#ff5a5a' : '#fff', 'center', 900, '#000', 6); }
   if (G.P.weapon) txt(`${G.P.weapon.type === 'pipe' ? 'צינור' : 'בקבוק'} (${G.P.weapon.uses})`, W - 60, 118, 16, '#ddd', 'center', 700, '#000', 4);
   // boss bar
@@ -83,7 +93,7 @@ function drawHUD() {
     ctx.fillStyle = '#fff'; ctx.fillRect(bx + bw * 0.5 - 1, by - 2, 2, 16); txt('הסוחר', bx + bw - 4, by - 8, 13, '#fff', 'right', 800, '#000', 3); }
   // GO arrow
   if (G.goT > 0 && Math.floor(G.t * 3) % 2 === 0) { txt('קדימה', W - 120, 250, 40, '#ffd23f', 'center', 900, '#000', 7); txt('➜', W - 120, 300, 64, '#ffd23f', 'center', 900, '#000', 7); }
-  if (G.banner) { const bn = G.banner; const sz = bn.big ? 76 : bn.small ? 28 : 46; txt(bn.text, W / 2, bn.big ? H / 2 - 30 : 170, sz, bn.big ? '#ffd23f' : '#fff', 'center', 900, '#000', bn.big ? 10 : 7); }
+  if (G.banner) { const bn = G.banner; const sz = bn.big ? 76 : bn.small ? 28 : 46; txt(bn.text, W / 2, bn.big ? H / 2 - 30 : (bn.small ? 205 : 170), sz, bn.big ? '#ffd23f' : '#fff', 'center', 900, '#000', bn.big ? 10 : 7); }
 }
 function drawSubtitle() {
   if (!subtitle) return; const s = subtitle; const line = s.who ? `${s.who}: ${s.text}` : s.text;
@@ -120,22 +130,28 @@ function drawIntroCard() {
 
 // ---------- screens ----------
 function drawBackdrop(dim = 0.55, scroll = 0) {
-  const bb = IMG.bg_back; if (bb) { const bw = bb.width * H / bb.height; const px = scroll % (bw * 2); for (let i = -1; i < 3; i++) { const x = i * bw - px; ctx.save(); if (i % 2 !== 0) { ctx.translate(x + bw, 0); ctx.scale(-1, 1); ctx.drawImage(bb, 0, 0, bw, H); } else ctx.drawImage(bb, x, 0, bw, H); ctx.restore(); } }
+  const bb = IMG.bg_market; if (bb) { const bw = bb.width * H / bb.height; const px = scroll % (bw * 2); for (let i = -1; i < 3; i++) { const x = i * bw - px; ctx.save(); if (i % 2 !== 0) { ctx.translate(x + bw, 0); ctx.scale(-1, 1); ctx.drawImage(bb, 0, 0, bw, H); } else ctx.drawImage(bb, x, 0, bw, H); ctx.restore(); } }
   ctx.fillStyle = `rgba(10,4,8,${dim})`; ctx.fillRect(0, 0, W, H);
 }
 const TITLE_BTNS = () => [{ id: 'mute', x: 20, y: 20, w: 50, h: 44 }, ...(IS_TOUCH ? [{ id: 'fs', x: 80, y: 20, w: 50, h: 44 }] : [])];
 function drawTitle() {
   drawBackdrop(0.5, APP.t * 20);
   const g = ctx.createLinearGradient(0, 260, 0, H); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,0.85)'); ctx.fillStyle = g; ctx.fillRect(0, 260, W, H - 260);
-  ['AceAf', 'Daniel', 'Ravid', 'Benjo'].forEach((h, i) => { const C = CHARS[i]; const b = Math.sin(APP.t * 3 + i) * 0.015; drawSprite('hero_' + h, W - 160 - i * 213, 520, 280, C.artFace, C.artFace, { sy: 1 + b, sx: 1 - b / 2 }); });
+  ['AceAf', 'Daniel', 'Ravid', 'Benjo'].forEach((h, i) => { const C = CHARS[i]; const b = Math.sin(APP.t * 3 + i) * 0.015; drawSprite('hero_' + h, W - 160 - i * 213, 548, 262, C.artFace, C.artFace, { sy: 1 + b, sx: 1 - b / 2 }); });
   const sc = 1 + Math.sin(APP.t * 2) * 0.02; ctx.save(); ctx.translate(W / 2, 92); ctx.scale(sc, sc); ctx.rotate(-0.03);
   txt(GAME_TITLE, 0, 0, 92, '#ffd23f', 'center', 900, '#3a0000', 16); ctx.restore();
   txt('פרק 1: השוק', W / 2, 160, 30, '#fff', 'center', 800, '#000', 6);
-  if (Math.floor(APP.t * 2) % 2 === 0) txt(IS_TOUCH ? 'געו במסך כדי להתחיל' : 'לחצו Enter או הקליקו כדי להתחיל', W / 2, 222, 26, '#fff', 'center', 800, '#000', 6);
+  MENU_BTNS().forEach((b, i) => { const sel = APP.menu === i; const k = sel ? 1 + Math.sin(APP.t * 5) * 0.03 : 1; ctx.save(); ctx.translate(b.x + b.w / 2, b.y + b.h / 2); ctx.scale(k, k);
+    ctx.fillStyle = sel ? b.col : 'rgba(0,0,0,0.6)'; rrect(-b.w / 2, -b.h / 2, b.w, b.h, 14); ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = sel ? '#fff' : b.col; ctx.stroke();
+    txt(b.label, 0, -6, 26, '#fff', 'center', 900, '#000', 4); txt(b.sub, 0, 18, 14, '#eee', 'center', 600); ctx.restore(); });
+  const b60 = +(localStorage.getItem('aceaf_best60') || 0); if (b60) txt(`שיא 60 שניות: ${b60.toLocaleString('en-US')}`, W / 2, 288, 15, '#ffd23f', 'center', 700, '#000', 3);
   if (!IS_TOUCH) txt('חצים/WASD – תזוזה · J – מכה · K – קפיצה · L – מיוחד/סופר · Q או 1-4 – החלפת דמות · M – שקט', W / 2, H - 16, 15, '#ddd', 'center', 600, '#000', 3);
   else txt('לשחק לרוחב · ג\'ויסטיק משמאל, כפתורים מימין', W / 2, H - 16, 15, '#ddd', 'center', 600, '#000', 3);
   drawCornerBtns();
 }
+const MENU_BTNS = () => [{ id: 'story', x: W / 2 + 10, y: 196, w: 230, h: 66, label: 'מצב סיפור', sub: 'פרק 1 · השוק + בוס', col: '#ff3b4a' },
+  { id: 'sixty', x: W / 2 - 240, y: 196, w: 230, h: 66, label: 'אתגר 60 שניות', sub: 'כמה שיותר נקודות', col: '#ff8a1e' }];
+function chooseMode(i) { APP.menu = i; APP.mode = i === 1 ? 'sixty' : 'story'; if (IS_TOUCH) goFullscreen(); APP.state = 'select'; playMusic('music_theme'); clearPressed(); taps.length = 0; }
 function drawCornerBtns() {
   TITLE_BTNS().forEach(b => { ctx.fillStyle = 'rgba(0,0,0,0.55)'; rrect(b.x, b.y, b.w, b.h, 10); ctx.fill(); txt(b.id === 'mute' ? (muted ? '🔇' : '🔊') : '⛶', b.x + b.w / 2, b.y + b.h / 2 + 1, 22, '#fff', 'center', 700); });
 }
@@ -143,8 +159,8 @@ function cornerTap(p) { for (const b of TITLE_BTNS()) if (hitRect(p, b.x, b.y, b
 const SEL_CARDS = () => CHARS.map((c, i) => ({ i, x: W - 30 - (i + 1) * 222 + 8, y: 70, w: 210, h: 380 }));
 function drawSelect() {
   drawBackdrop(0.75, 0);
-  txt('בחרו לוחם פותח', W / 2, 36, 34, '#ffd23f', 'center', 900, '#000', 7);
-  txt('את השאר מחליפים תוך כדי קרב – החלפה באמצע רצף = מתקפת צוות!', W / 2, 470, 18, '#fff', 'center', 700, '#000', 4);
+  txt(APP.mode === 'sixty' ? 'אתגר 60 שניות · בחרו לוחם' : 'בחרו לוחם פותח', W / 2, 36, 34, '#ffd23f', 'center', 900, '#000', 7);
+  txt('מחליפים תוך כדי קרב (החלפה באמצע רצף = מתקפת צוות) · הולכים לתוך אויב = תפיסה וזריקה', W / 2, 470, 17, '#fff', 'center', 700, '#000', 4);
   SEL_CARDS().forEach(cd => {
     const C = CHARS[cd.i], sel = APP.sel === cd.i;
     ctx.save(); ctx.fillStyle = sel ? 'rgba(40,10,15,0.92)' : 'rgba(0,0,0,0.6)'; rrect(cd.x, cd.y, cd.w, cd.h, 14); ctx.fill(); ctx.lineWidth = sel ? 5 : 2; ctx.strokeStyle = sel ? C.color : '#555'; ctx.stroke();
@@ -163,7 +179,7 @@ const BG_TINT = { dark: ['#0a0610', '#2a0d14'], fire: ['#3a0b00', '#b3361b'], ni
 function drawComic() {
   const c = APP.comic; if (!c) return; const pg = c.pages[c.p], ln = pg.lines[c.l]; c.t += 1 / 60;
   const [a, b] = BG_TINT[pg.bg] || BG_TINT.dark; const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, a); g.addColorStop(1, b); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-  if (IMG.bg_back) { ctx.globalAlpha = 0.28; ctx.drawImage(IMG.bg_back, 0, 40, W, W * IMG.bg_back.height / IMG.bg_back.width); ctx.globalAlpha = 1; }
+  if (IMG.bg_market) { ctx.globalAlpha = 0.28; ctx.drawImage(IMG.bg_market, 0, 0, IMG.bg_market.width / 2, IMG.bg_market.height, 0, 0, W, H); ctx.globalAlpha = 1; }
   // halftone
   ctx.fillStyle = 'rgba(0,0,0,0.18)'; for (let y = 0; y < H; y += 14) for (let x = (y / 14 % 2) * 7; x < W; x += 14) { ctx.beginPath(); ctx.arc(x, y, 2.4, 0, 7); ctx.fill(); }
   // panel frame
@@ -186,12 +202,13 @@ function drawComic() {
   if (Math.floor(APP.t * 2) % 2 === 0) txt(IS_TOUCH ? 'געו להמשך ◀' : 'Enter / הקליקו להמשך ◀', 150, H - 40, 18, '#fff', 'center', 700, '#000', 4);
   ctx.fillStyle = 'rgba(0,0,0,0.55)'; rrect(W - 110, H - 62, 80, 36, 10); ctx.fill(); txt('דלגו', W - 70, H - 44, 18, '#fff', 'center', 800);
 }
-const RES_BTNS = () => [{ id: 'share', x: W / 2 + 20, y: 452, w: 250, h: 52, label: 'שתפו כרטיס ציון', col: '#2fd6ff' }, { id: 'again', x: W / 2 - 270, y: 452, w: 250, h: 52, label: 'שחקו שוב', col: '#ff3b4a' }];
+const RES_BTNS = () => [{ id: 'share', x: W / 2 + 120, y: 452, w: 230, h: 52, label: 'שתפו כרטיס ציון', col: '#2fd6ff' }, { id: 'again', x: W / 2 - 100, y: 452, w: 200, h: 52, label: 'שחקו שוב', col: '#ff3b4a' }, { id: 'menu', x: W / 2 - 330, y: 452, w: 200, h: 52, label: 'תפריט ראשי', col: '#555' }];
 function drawResults() {
   drawBackdrop(0.78, 0); const R = APP.results;
-  txt(R.win ? 'השלב הושלם!' : 'הצוות נפל...', W / 2, 46, 46, R.win ? '#7dff8a' : '#ff6b6b', 'center', 900, '#000', 8);
+  const six = R.mode === 'sixty'; txt(six ? (R.win ? 'אתגר 60 שניות – הזמן נגמר!' : 'הצוות נפל...') : (R.win ? 'השלב הושלם!' : 'הצוות נפל...'), W / 2, 46, 46, R.win ? '#7dff8a' : '#ff6b6b', 'center', 900, '#000', 8);
   if (APP.cardImg && APP.cardImg.complete) { const ch = 360, cw = ch * 1080 / 1350; ctx.drawImage(APP.cardImg, 50, 80, cw, ch); ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.strokeRect(50, 80, cw, ch); }
-  const rows = [['ניקוד', R.score.toLocaleString('en-US')], ['זמן', fmtTime(R.time)], ['רצף מקסימלי', '×' + R.maxCombo], ['נוקאאוטים', String(R.kos)], ['כסף', '₪' + R.cash], ['קלף לוחם', R.card ? '1/60 ★' : '0/60 (מוסתר בארגז...)'], ['שיא אישי', R.best.toLocaleString('en-US') + (R.newBest ? ' – שיא חדש!' : '')]];
+  const rows = six ? [['ניקוד', R.score.toLocaleString('en-US')], ['נוקאאוטים', String(R.kos)], ['רצף מקסימלי', '×' + R.maxCombo], ['כסף', '₪' + R.cash], ['לוחם פותח', R.hero], ['שיא 60 שניות', R.best.toLocaleString('en-US') + (R.newBest ? ' – שיא חדש!' : '')]]
+    : [['ניקוד', R.score.toLocaleString('en-US')], ['זמן', fmtTime(R.time)], ['רצף מקסימלי', '×' + R.maxCombo], ['נוקאאוטים', String(R.kos)], ['כסף', '₪' + R.cash], ['קלף לוחם', R.card ? '1/60 ★' : '0/60 (מוסתר בארגז...)'], ['שיא אישי', R.best.toLocaleString('en-US') + (R.newBest ? ' – שיא חדש!' : '')]];
   rows.forEach((r, i) => { const y = 110 + i * 46; txt(r[0], W - 60, y, 24, '#ccc', 'right', 700); txt(r[1], W - 330, y, 28, i === 0 ? '#ffd23f' : '#fff', 'right', 900, '#000', 4); });
   RES_BTNS().forEach(b => { ctx.fillStyle = b.col; rrect(b.x, b.y, b.w, b.h, 14); ctx.fill(); txt(b.label, b.x + b.w / 2, b.y + b.h / 2, 24, '#fff', 'center', 900, '#000', 4); });
   if (APP.toast) { APP.toast.t -= 1 / 60; txt(APP.toast.text, W / 2, 520, 20, '#7dff8a', 'center', 800, '#000', 4); if (APP.toast.t <= 0) APP.toast = null; }
@@ -210,12 +227,15 @@ function frame(now) {
   // input handling per state
   if (consume('mute')) setMute(!muted);
   if (APP.state === 'title' && !portrait) {
-    const tp = taps.shift(); if (tp && cornerTap(tp)) { } else if (tp || consume('ok') || consume('attack')) { if (IS_TOUCH) goFullscreen(); APP.state = 'select'; playMusic('music_stage'); clearPressed(); taps.length = 0; }
+    if (consume('left') || consume('right') || consume('up') || consume('down')) { APP.menu = 1 - APP.menu; sfx('tag', 0.5); }
+    if (!APP.themeOn && AC.state === 'running') { APP.themeOn = true; playMusic('music_theme'); }
+    const tp = taps.shift(); if (tp && cornerTap(tp)) { } else if (tp) { MENU_BTNS().forEach((b, i) => { if (hitRect(tp, b.x, b.y, b.w, b.h)) chooseMode(i); }); }
+    else if (consume('ok') || consume('attack')) chooseMode(APP.menu);
   } else if (APP.state === 'select') {
     if (consume('left')) APP.sel = Math.min(3, APP.sel + 1); if (consume('right')) APP.sel = Math.max(0, APP.sel - 1);
     const tp = taps.shift(); let go = consume('ok') || consume('attack');
     if (tp && !cornerTap(tp)) { SEL_CARDS().forEach(cd => { if (hitRect(tp, cd.x, cd.y, cd.w, cd.h)) { if (APP.sel === cd.i) go = true; APP.sel = cd.i; sfx('tag', 0.6); } }); if (hitRect(tp, W / 2 - 120, 488, 240, 46)) go = true; }
-    if (go) { clearPressed(); taps.length = 0; startComic(COMIC_INTRO, startGame); }
+    if (go) { clearPressed(); taps.length = 0; if (APP.mode === 'sixty') startGame(); else startComic(COMIC_INTRO, startGame); }
   } else if (APP.state === 'comic') {
     const tp = taps.shift();
     if (tp && hitRect(tp, W - 110, H - 62, 80, 36)) { const f = APP.comic.onDone; APP.comic = null; if (curVo) try { curVo.stop(); } catch (e) { } f(); }
@@ -223,7 +243,7 @@ function frame(now) {
   } else if (APP.state === 'play') {
     if (portrait) APP.paused = true;
     if (consume('pause')) APP.paused = !APP.paused;
-    if (APP.paused) { const tp = taps.shift(); if (tp) PAUSE_BTNS().forEach(b => { if (hitRect(tp, b.x, b.y, b.w, b.h)) { if (b.id === 'resume' && !portrait) APP.paused = false; if (b.id === 'menu') { APP.paused = false; touchControlsActive = false; APP.state = 'title'; stopMusic(); } if (b.id === 'mute') setMute(!muted); } }); if (consume('ok')) APP.paused = false; clearPressed(); }
+    if (APP.paused) { const tp = taps.shift(); if (tp) PAUSE_BTNS().forEach(b => { if (hitRect(tp, b.x, b.y, b.w, b.h)) { if (b.id === 'resume' && !portrait) APP.paused = false; if (b.id === 'menu') { APP.paused = false; touchControlsActive = false; APP.state = 'title'; playMusic('music_theme'); if (curVo) try { curVo.stop(); } catch (e) { } subtitle = null; G.state = 'menu'; } if (b.id === 'mute') setMute(!muted); } }); if (consume('ok')) APP.paused = false; clearPressed(); }
     else {
       const tp = taps.shift();
       if (tp) { if (usingTouch && hitRect(tp, 16, 72, 40, 34)) APP.paused = true; HUD_SLOTS().forEach(s => { if (Math.hypot(tp.x - s.x, tp.y - s.y) < 38) trySwitch(s.i); }); }
@@ -232,7 +252,7 @@ function frame(now) {
   } else if (APP.state === 'results') {
     const tp = taps.shift(); let act = null; if (consume('ok')) act = 'again';
     if (tp) RES_BTNS().forEach(b => { if (hitRect(tp, b.x, b.y, b.w, b.h)) act = b.id; });
-    if (act === 'share') shareCard(); if (act === 'again') { APP.state = 'select'; clearPressed(); }
+    if (act === 'share') shareCard(); if (act === 'again') { APP.state = 'select'; clearPressed(); } if (act === 'menu') { APP.state = 'title'; clearPressed(); }
   }
   taps.length = Math.min(taps.length, 3);
   // render
@@ -260,9 +280,9 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) { if 
 // test / debug hooks (used by automated smoke tests)
 window.ACE = {
   get app() { return APP; }, get G() { return G; },
-  quickStart(ci = 0) { APP.sel = ci; startGame(); },
+  quickStart(ci = 0, mode = 'story') { APP.sel = ci; APP.mode = mode; startGame(); },
   warp(x) { G.P.x = x; G.camX = Math.max(0, x - W * 0.42); },
   clearWave() { G.enemies.forEach(e => { if (!e.boss) { e.dead = true; e.alpha = 0; } }); G.pendingSpawns = []; },
-  fillMeter() { TM().meter = 100; }, godMode(on = true) { G.god = on; },
+  fillMeter() { TM().meter = 100; }, godMode(on = true) { G.god = on; }, setTime(t) { G.timeLeft = t; },
 };
 loadAll(); requestAnimationFrame(frame);

@@ -22,16 +22,15 @@ const lerp = (a, b, t) => a + (b - a) * t;
 const IMG = {}, SND = {};
 const IMG_LIST = ['hero_AceAf', 'hero_Daniel', 'hero_Ravid', 'hero_Benjo', 'en_grunt', 'en_knife', 'en_bruiser', 'boss_merchant',
   'face_AceAf', 'face_Daniel', 'face_Ravid', 'face_Benjo', 'face_boss'];
-const JPG_LIST = ['bg_back', 'bg_floor', 'portrait_AceAf', 'portrait_Daniel', 'portrait_Ravid', 'portrait_Benjo'];
+const JPG_LIST = ['bg_market', 'portrait_AceAf', 'portrait_Daniel', 'portrait_Ravid', 'portrait_Benjo'];
 // versioned audio files (bump suffix when a file changes so phones don't keep stale copies)
 const AUD = {
-  music_stage: 'music/stage_v1.mp3', music_boss: 'music/boss_v1.mp3',
-  ace_tag: 'vo/ace_tag_r1.mp3', ace_super: 'vo/ace_super_r1.mp3', ace_taunt: 'vo/ace_taunt_r1.mp3',
-  dan_tag: 'vo/dan_tag_r1.mp3', dan_super: 'vo/dan_super_r1.mp3', dan_taunt: 'vo/dan_taunt_r1.mp3',
-  rav_tag: 'vo/rav_tag_r1.mp3', rav_super: 'vo/rav_super_r1.mp3', rav_taunt: 'vo/rav_taunt_r1.mp3',
-  ben_tag: 'vo/ben_tag_r1.mp3', ben_super: 'vo/ben_super_r1.mp3', ben_taunt: 'vo/ben_taunt_r1.mp3',
-  boss_intro: 'vo/boss_intro_r1.mp3', boss_p2: 'vo/boss_p2_r1.mp3', boss_ko: 'vo/boss_ko_r1.mp3',
+  music_theme: 'music/theme_v1.mp3', music_stage: 'music/market_loop_v1.mp3', music_boss: 'music/market_boss_v1.mp3', music_sixty: 'music/sixty_v1.mp3',
+  stg_win: 'music/stinger_win_v1.mp3', stg_lose: 'music/stinger_lose_v1.mp3', stg_ko: 'music/stinger_ko_v1.mp3',
 };
+// voice lines by Yaar (recommended takes), file = vo/<line>_y1.mp3
+['ace_1', 'ace_2', 'ace_3', 'daniel_1', 'daniel_2', 'daniel_3', 'ravid_1', 'ravid_2', 'ravid_3', 'benjo_1', 'benjo_2', 'benjo_3',
+  'boss_1', 'boss_2', 'narr_1', 'narr_2', 'narr_3'].forEach(k => AUD[k] = 'vo/' + k + '_y1.mp3');
 ['hit_light', 'hit_heavy', 'whoosh', 'chain', 'blade', 'bat', 'crate', 'bottle', 'coin', 'eat', 'super', 'tag', 'ko', 'stomp', 'go', 'hurt']
   .forEach(k => AUD['sfx_' + k] = 'sfx/' + k + '_v1.mp3');
 let loadProgress = 0, loadDone = false;
@@ -57,23 +56,30 @@ const AC = new (window.AudioContext || window.webkitAudioContext)();
 const master = AC.createGain(); master.connect(AC.destination);
 const musicBus = AC.createGain(); musicBus.gain.value = 0.42; musicBus.connect(master);
 const sfxBus = AC.createGain(); sfxBus.gain.value = 0.8; sfxBus.connect(master);
-const voBus = AC.createGain(); voBus.gain.value = 1.0; voBus.connect(master);
+const voBus = AC.createGain(); voBus.gain.value = 1.2; voBus.connect(master);
 let muted = localStorage.getItem('aceaf_mute') === '1'; master.gain.value = muted ? 0 : 1;
 function setMute(m) { muted = m; master.gain.value = m ? 0 : 1; localStorage.setItem('aceaf_mute', m ? '1' : '0'); }
 function unlockAudio() { if (AC.state !== 'running') AC.resume(); }
 let curMusic = null;
-function playMusic(key, fade = 1.0) {
+function playMusic(key, fade = 1.0, loop = true) {
   if (curMusic && curMusic.key === key) return;
   const old = curMusic;
   if (old) { old.g.gain.setTargetAtTime(0, AC.currentTime, fade / 3); setTimeout(() => { try { old.src.stop(); } catch (e) { } }, fade * 1500); }
   curMusic = null;
   const buf = SND[key]; if (!buf) return;
-  const src = AC.createBufferSource(); src.buffer = buf; src.loop = true;
+  const src = AC.createBufferSource(); src.buffer = buf; src.loop = loop;
+  const lp = MUSIC_LOOPS[key]; if (lp && loop) { src.loopStart = lp[0]; src.loopEnd = lp[1]; }
   const g = AC.createGain(); g.gain.value = 0; g.gain.setTargetAtTime(1, AC.currentTime, fade / 3);
-  src.connect(g); g.connect(musicBus); src.start();
+  src.connect(g); g.connect(musicBus); src.start(0, lp && loop ? lp[0] : 0);
   curMusic = { key, src, g };
 }
 function stopMusic(fade = 0.6) { if (curMusic) { const o = curMusic; o.g.gain.setTargetAtTime(0, AC.currentTime, fade / 3); setTimeout(() => { try { o.src.stop(); } catch (e) { } }, fade * 1500); curMusic = null; } }
+function stinger(k, vol = 0.9) {
+  const buf = SND['stg_' + k]; if (!buf || AC.state !== 'running') return;
+  const s = AC.createBufferSource(); s.buffer = buf; const g = AC.createGain(); g.gain.value = vol; s.connect(g); g.connect(master); s.start();
+}
+// seamless loop points (sec) - files carry 0.5s pre/post-roll so decoder offsets can't open a gap
+const MUSIC_LOOPS = { music_stage: [0.50000, 60.50036], music_boss: [0.50000, 45.30290] };
 const sfxLast = {};
 function sfx(k, vol = 1, rate = 1) {
   const buf = SND['sfx_' + k]; if (!buf || AC.state !== 'running') return;
