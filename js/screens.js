@@ -1,7 +1,7 @@
 'use strict';
 // ===== Ace-Af team – screens, HUD, loop =====
 const GAME_TITLE = 'Ace-Af team';
-const APP = { state: 'loading', t: 0, sel: 0, mode: 'story', menu: 0, comic: null, results: null, paused: false, cardBlob: null, cardURL: null };
+const APP = { daily: null, state: 'loading', t: 0, sel: 0, mode: 'story', menu: 0, comic: null, results: null, paused: false, cardBlob: null, cardURL: null };
 const COMIC_INTRO = [
   { bg: 'dark', chars: [], cap: 'תל אביב. לילה אחד.', lines: [{ who: '', text: 'תאגיד "מגדלי עזאזל" קונה את העיר – רחוב אחרי רחוב. מי שלא מוכר – נעלם.' }] },
   { bg: 'fire', chars: ['Benjo'], cap: 'המוסך של Benjo עלה באש.', lines: [{ who: 'Benjo', text: 'עכשיו אני כועס!', vo: 'benjo_2' }] },
@@ -17,18 +17,19 @@ const COMIC_OUTRO = [
 function startComic(pages, onDone) { APP.state = 'comic'; APP.comic = { pages, p: 0, l: 0, t: 0, onDone }; playComicLine(); }
 function playComicLine() { const c = APP.comic, pg = c.pages[c.p], ln = pg.lines[c.l]; c.t = 0; if (ln && ln.vo) voice(ln.vo, ln.text, ln.who); else if (curVo) { try { curVo.stop(); } catch (e) { } } subtitle = null; }
 function comicNext() { const c = APP.comic; const pg = c.pages[c.p]; if (c.l < pg.lines.length - 1) c.l++; else { c.p++; c.l = 0; if (c.p >= c.pages.length) { const f = c.onDone; APP.comic = null; f(); return; } } playComicLine(); }
-function startGame() { newGame(APP.sel, APP.mode); APP.state = 'play'; APP.paused = false; touchControlsActive = true; clearPressed(); taps.length = 0; }
+function startGame() { newGame(APP.sel, APP.mode, APP.mode === 'sixty' ? APP.daily : null); APP.state = 'play'; APP.paused = false; touchControlsActive = true; clearPressed(); taps.length = 0; }
 function endStage() {
   touchControlsActive = false; const win = G.win;
   const sixty = G.mode === 'sixty';
-  APP.results = { mode: G.mode, win, score: G.score + (win && !sixty ? Math.max(0, Math.round(3000 - G.time * 10)) : 0), time: sixty ? 60 - G.timeLeft : G.time, maxCombo: G.maxCombo, kos: G.kos, cash: G.cash, card: G.card, hero: CHARS[G.startChar].name, team: G.team.map(t => ({ hp: t.hp, down: t.down })) };
-  const bk = sixty ? 'aceaf_best60' : 'aceaf_best';
+  APP.results = { mode: G.mode, daily: G.daily, win, score: G.score + (win && !sixty ? Math.max(0, Math.round(3000 - G.time * 10)) : 0), time: sixty ? 60 - G.timeLeft : G.time, maxCombo: G.maxCombo, kos: G.kos, cash: G.cash, card: G.card, hero: CHARS[G.startChar].name, team: G.team.map(t => ({ hp: t.hp, down: t.down })) };
+  const bk = G.daily ? 'aceaf_daily_' + G.daily : sixty ? 'aceaf_best60' : 'aceaf_best';
   const best = +(localStorage.getItem(bk) || 0); APP.results.best = Math.max(best, APP.results.score); localStorage.setItem(bk, APP.results.best);
   APP.results.newBest = APP.results.score > best;
   if (!win) stinger('lose'); else if (sixty) stinger('win');
   if (win && !sixty) startComic(COMIC_OUTRO, showResults); else showResults();
 }
 function showResults() { APP.state = 'results'; playMusic('music_theme'); makeScoreCard(); }
+function fmtDate(d) { const [y, m, dd] = d.split('-'); return `${+dd}.${+m}.${y}`; }
 function fmtTime(t) { const m = Math.floor(t / 60), s = Math.floor(t % 60); return `${m}:${String(s).padStart(2, '0')}`; }
 
 // ---------- score card (canvas -> PNG) ----------
@@ -38,23 +39,23 @@ function makeScoreCard() {
   const bgm = IMG.bg_market; if (bgm) { x.globalAlpha = 0.5; const sh = bgm.height, sw = sh * 1080 / 700; x.drawImage(bgm, (bgm.width - sw) * 0.35, 0, sw, sh, 0, 0, 1080, 700); x.globalAlpha = 1; }
   const six = R.mode === 'sixty';
   const T = (s, X, Y, sz, col = '#fff', w = 800, al = 'center') => { x.font = `${w} ${sz}px ${FONT}`; x.textAlign = al; x.textBaseline = 'middle'; x.direction = /[\u0590-\u05FF]/.test(s) ? 'rtl' : 'ltr'; x.lineWidth = sz / 7; x.strokeStyle = '#000'; x.lineJoin = 'round'; x.strokeText(s, X, Y); x.fillStyle = col; x.fillText(s, X, Y); };
-  T(GAME_TITLE, 540, 110, 110, '#ffd23f', 900); T(six ? 'אתגר 60 שניות · השוק' : 'פרק 1 · השוק', 540, 205, 46, six ? '#ff8a3d' : '#fff', 700);
+  T(GAME_TITLE, 540, 110, 110, '#ffd23f', 900); T(R.daily ? `אתגר יומי · ${fmtDate(R.daily)}` : six ? 'אתגר 60 שניות · השוק' : 'פרק 1 · השוק', 540, 205, 46, R.daily ? '#7fd6ff' : six ? '#ff8a3d' : '#fff', 700);
   const heroes = ['AceAf', 'Daniel', 'Ravid', 'Benjo']; heroes.forEach((h, i) => { const im = IMG['hero_' + h]; if (!im) return; const hh = 420, ww = im.width * hh / im.height; x.drawImage(im, 135 + i * 270 - ww / 2, 250, ww, hh); });
   x.fillStyle = 'rgba(0,0,0,0.6)'; x.fillRect(60, 700, 960, 520);
   T(six ? (R.win ? 'שרדתם 60 שניות!' : 'הצוות נפל...') : (R.win ? 'השלב הושלם!' : 'הצוות נפל...'), 540, 760, 64, R.win ? '#7dff8a' : '#ff6b6b', 900);
   T(`${R.score.toLocaleString('en-US')}`, 540, 870, 120, '#ffd23f', 900); T('ניקוד', 540, 950, 40, '#ddd', 600);
-  const st = six ? [['נוקאאוטים', String(R.kos)], ['רצף מקסימלי', '×' + R.maxCombo], ['כסף', '₪' + R.cash], ['לוחם פותח', R.hero]]
-    : [['זמן', fmtTime(R.time)], ['רצף מקסימלי', '×' + R.maxCombo], ['נוקאאוטים', String(R.kos)], ['קלף לוחם', R.card ? '1/60 ★' : '0/60']];
+  const st = six ? [['הובסו', String(R.kos)], ['רצף מקסימלי', '×' + R.maxCombo], ['כסף', '₪' + R.cash], ['לוחם פותח', R.hero]]
+    : [['זמן', fmtTime(R.time)], ['רצף מקסימלי', '×' + R.maxCombo], ['הובסו', String(R.kos)], ['קלף לוחם', R.card ? '1/60 ★' : '0/60']];
   st.forEach((s, i) => { const X = 920 - i * 260; T(s[1], X - 10, 1060, 54, '#fff', 900); T(s[0], X - 10, 1120, 30, '#bbb', 600); });
-  T(six ? 'שברו את השיא שלי ב-60 שניות!' : 'מי משיג יותר?', 540, 1280, 44, '#fff', 700);
+  T(R.daily ? `אותו קרב לכולם היום (${fmtDate(R.daily)}) – מי משיג יותר?` : six ? 'שברו את השיא שלי ב-60 שניות!' : 'מי משיג יותר?', 540, 1280, R.daily ? 38 : 44, '#fff', 700);
   c.toBlob(b => { APP.cardBlob = b; if (APP.cardURL) URL.revokeObjectURL(APP.cardURL); APP.cardURL = URL.createObjectURL(b); const im = new Image(); im.src = APP.cardURL; APP.cardImg = im; }, 'image/png');
 }
 async function shareCard() {
   if (!APP.cardBlob) return;
-  const fname = APP.results.mode === 'sixty' ? 'aceaf-team-60s.png' : 'aceaf-team-score.png';
+  const fname = APP.results.daily ? `aceaf-team-daily-${APP.results.daily}.png` : APP.results.mode === 'sixty' ? 'aceaf-team-60s.png' : 'aceaf-team-score.png';
   const file = new File([APP.cardBlob], fname, { type: 'image/png' });
   try {
-    if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: GAME_TITLE, text: `${GAME_TITLE} – ${APP.results.score} נקודות${APP.results.mode === 'sixty' ? ' באתגר 60 שניות' : ''}. מי משיג יותר?` }); return; }
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: GAME_TITLE, text: `${GAME_TITLE} – ${APP.results.score} נקודות${APP.results.daily ? ` באתגר היומי (${fmtDate(APP.results.daily)})` : APP.results.mode === 'sixty' ? ' באתגר 60 שניות' : ''}. מי משיג יותר?` }); return; }
   } catch (e) { if (e && e.name === 'AbortError') return; }
   const a = document.createElement('a'); a.href = APP.cardURL; a.download = fname; document.body.appendChild(a); a.click(); a.remove();
   APP.toast = { text: 'כרטיס הציון נשמר', t: 2 };
@@ -81,7 +82,7 @@ function drawHUD() {
   txt(`₪${G.cash}`, 18, 54, 20, '#7dff8a', 'left', 800, '#000', 4);
   if (usingTouch) { ctx.fillStyle = 'rgba(0,0,0,0.5)'; rrect(16, 72, 40, 34, 8); ctx.fill(); txt('II', 36, 89, 18, '#fff', 'center', 900); }
   if (G.mode === 'sixty') { const tl = Math.ceil(G.timeLeft), hot = G.timeLeft <= 10; const k = hot ? 1 + 0.15 * Math.max(0, Math.sin(G.t * 12)) : 1;
-    txt(String(tl), W / 2 - 10, 34, 44 * k, hot ? '#ff4040' : '#fff', 'center', 900, '#000', 7);
+    txt(String(tl), W / 2 - 10, 34, 44 * k, hot ? '#ff4040' : '#fff', 'center', 900, '#000', 7); if (G.daily) txt('אתגר יומי · ' + fmtDate(G.daily), W / 2 - 10, 66, 14, '#7fd6ff', 'center', 800, '#000', 3);
     if (G.countdown > 0) { const n = Math.ceil(G.countdown - 0.4); const f = (G.countdown - 0.4) % 1; txt(n > 0 ? String(n) : 'קדימה!', W / 2, H / 2 - 40, (n > 0 ? 140 : 90) * (1 + f * 0.3), '#ffd23f', 'center', 900, '#000', 12);
       txt('אתגר 60 שניות – כמה שיותר נקודות!', W / 2, H / 2 + 50, 26, '#fff', 'center', 800, '#000', 6); } }
   else txt(fmtTime(G.time), W / 2 - 10, 22, 20, '#fff', 'center', 800, '#000', 4);
@@ -106,10 +107,11 @@ function drawTouch() {
   if (joy.id !== null) { ctx.globalAlpha = 0.35; ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(joy.bx, joy.by, 62, 0, 7); ctx.fill(); ctx.globalAlpha = 0.7; ctx.beginPath(); ctx.arc(joy.bx + joy.dx * 50, joy.by + joy.dy * 50, 28, 0, 7); ctx.fill(); }
   else { ctx.globalAlpha = 0.18; ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(130, 430, 62, 0, 7); ctx.fill(); ctx.globalAlpha = 0.35; ctx.beginPath(); ctx.arc(130, 430, 28, 0, 7); ctx.fill(); }
   const tm = TM(), ready = tm.meter >= 100;
-  BTN.forEach(b => { const held = btnHeld[b.a]; ctx.globalAlpha = held ? 0.75 : 0.45; ctx.fillStyle = b.a === 'special' && ready ? `hsl(${(G.t * 400) % 360},90%,55%)` : b.a === 'attack' ? '#ff3b4a' : '#222';
+  BTN.forEach(b => { const held = btnHeld[b.a]; ctx.globalAlpha = held ? 0.75 : 0.45; ctx.fillStyle = b.a === 'special' && ready ? `hsl(${(G.t * 400) % 360},90%,55%)` : b.a === 'punch' ? '#ff3b4a' : b.a === 'kick' ? '#ff8a1e' : '#222';
     ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, 7); ctx.fill(); ctx.globalAlpha = 0.9; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
     if (b.a === 'special' && G.P.spCd > 0 && !ready) { ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.arc(b.x, b.y, b.r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * G.P.spCd / CH().sp.cd); ctx.fill(); }
-    ctx.globalAlpha = 1; txt(b.a === 'special' && ready ? 'סופר!' : b.label, b.x, b.y, b.r > 40 ? 20 : 15, '#fff', 'center', 800, '#000', 3); });
+    if ((b.a === 'punch' || b.a === 'kick') && G.P.st === 'charge' && G.P.chgBtn === b.a) { const k = clamp(G.P.t / 0.9, 0, 1); ctx.globalAlpha = 1; ctx.strokeStyle = k >= 1 ? '#fff6c0' : '#ffd23f'; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(b.x, b.y, b.r + 6, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * k); ctx.stroke(); }
+    ctx.globalAlpha = 1; txt(b.a === 'special' && ready ? 'סופר!' : b.label, b.x, b.y, b.r > 40 * BTN_S ? 20 * BTN_S : 15 * BTN_S, '#fff', 'center', 800, '#000', 3); });
   ctx.restore();
 }
 function drawCine() {
@@ -137,30 +139,36 @@ const TITLE_BTNS = () => [{ id: 'mute', x: 20, y: 20, w: 50, h: 44 }, ...(IS_TOU
 function drawTitle() {
   drawBackdrop(0.5, APP.t * 20);
   const g = ctx.createLinearGradient(0, 260, 0, H); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,0.85)'); ctx.fillStyle = g; ctx.fillRect(0, 260, W, H - 260);
-  ['AceAf', 'Daniel', 'Ravid', 'Benjo'].forEach((h, i) => { const C = CHARS[i]; const b = Math.sin(APP.t * 3 + i) * 0.015; drawSprite('hero_' + h, W - 160 - i * 213, 548, 262, C.artFace, C.artFace, { sy: 1 + b, sx: 1 - b / 2 }); });
+  ['AceAf', 'Daniel', 'Ravid', 'Benjo'].forEach((h, i) => { const C = CHARS[i]; const b = Math.sin(APP.t * 3 + i) * 0.015; drawSprite('hero_' + h, W / 2 + 320 - i * 213, 548, 262, C.artFace, C.artFace, { sy: 1 + b, sx: 1 - b / 2 }); });
   const sc = 1 + Math.sin(APP.t * 2) * 0.02; ctx.save(); ctx.translate(W / 2, 92); ctx.scale(sc, sc); ctx.rotate(-0.03);
   txt(GAME_TITLE, 0, 0, 92, '#ffd23f', 'center', 900, '#3a0000', 16); ctx.restore();
   txt('פרק 1: השוק', W / 2, 160, 30, '#fff', 'center', 800, '#000', 6);
   MENU_BTNS().forEach((b, i) => { const sel = APP.menu === i; const k = sel ? 1 + Math.sin(APP.t * 5) * 0.03 : 1; ctx.save(); ctx.translate(b.x + b.w / 2, b.y + b.h / 2); ctx.scale(k, k);
     ctx.fillStyle = sel ? b.col : 'rgba(0,0,0,0.6)'; rrect(-b.w / 2, -b.h / 2, b.w, b.h, 14); ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = sel ? '#fff' : b.col; ctx.stroke();
     txt(b.label, 0, -6, 26, '#fff', 'center', 900, '#000', 4); txt(b.sub, 0, 18, 14, '#eee', 'center', 600); ctx.restore(); });
-  const b60 = +(localStorage.getItem('aceaf_best60') || 0); if (b60) txt(`שיא 60 שניות: ${b60.toLocaleString('en-US')}`, W / 2, 288, 15, '#ffd23f', 'center', 700, '#000', 3);
-  if (!IS_TOUCH) txt('חצים/WASD – תזוזה · J – מכה · K – קפיצה · L – מיוחד/סופר · Q או 1-4 – החלפת דמות · M – שקט', W / 2, H - 16, 15, '#ddd', 'center', 600, '#000', 3);
-  else txt('לשחק לרוחב · ג\'ויסטיק משמאל, כפתורים מימין', W / 2, H - 16, 15, '#ddd', 'center', 600, '#000', 3);
+  const b60 = +(localStorage.getItem('aceaf_best60') || 0), bd = +(localStorage.getItem('aceaf_daily_' + todayStr()) || 0);
+  const bl = [b60 ? `שיא 60 שניות: ${b60.toLocaleString('en-US')}` : '', bd ? `שיא יומי: ${bd.toLocaleString('en-US')}` : ''].filter(Boolean).join(' · ');
+  if (bl) txt(bl, W / 2, 288, 15, '#ffd23f', 'center', 700, '#000', 3);
+  if (!IS_TOUCH) { txt('חצים/WASD – תזוזה · J – אגרוף · K – בעיטה · רווח – קפיצה · L – מיוחד/סופר', W / 2, H - 40, 16, '#fff', 'center', 700, '#000', 3);
+    txt('החזיקו J או K – מכה כבדה (טעינה) · שלבו אגרוף ובעיטה לקומבו · Q או 1-4 – החלפת דמות · M – שקט', W / 2, H - 16, 15, '#ddd', 'center', 600, '#000', 3); }
+  else { txt('לשחק לרוחב · ג\'ויסטיק משמאל · אגרוף ובעיטה מימין', W / 2, H - 40, 16, '#fff', 'center', 700, '#000', 3);
+    txt('החזיקו אגרוף/בעיטה לטעינת מכה כבדה · שלבו ביניהם לקומבו', W / 2, H - 16, 15, '#ddd', 'center', 600, '#000', 3); }
   drawCornerBtns();
 }
-const MENU_BTNS = () => [{ id: 'story', x: W / 2 + 10, y: 196, w: 230, h: 66, label: 'מצב סיפור', sub: 'פרק 1 · השוק + בוס', col: '#ff3b4a' },
-  { id: 'sixty', x: W / 2 - 240, y: 196, w: 230, h: 66, label: 'אתגר 60 שניות', sub: 'כמה שיותר נקודות', col: '#ff8a1e' }];
-function chooseMode(i) { APP.menu = i; APP.mode = i === 1 ? 'sixty' : 'story'; if (IS_TOUCH) goFullscreen(); APP.state = 'select'; playMusic('music_theme'); clearPressed(); taps.length = 0; }
+const MENU_BTNS = () => [{ id: 'story', x: W / 2 + 125, y: 196, w: 220, h: 66, label: 'מצב סיפור', sub: 'פרק 1 · השוק + בוס', col: '#ff3b4a' },
+  { id: 'sixty', x: W / 2 - 110, y: 196, w: 220, h: 66, label: 'אתגר 60 שניות', sub: 'כמה שיותר נקודות', col: '#ff8a1e' },
+  { id: 'daily', x: W / 2 - 345, y: 196, w: 220, h: 66, label: 'אתגר יומי', sub: `${fmtDate(todayStr())} · ${CHARS[dailyHero(todayStr())].name}`, col: '#1e9bd7' }];
+function chooseMode(i) { APP.menu = i; APP.mode = i >= 1 ? 'sixty' : 'story'; APP.daily = i === 2 ? todayStr() : null;
+  if (i === 2) { APP.sel = dailyHero(APP.daily); if (IS_TOUCH) goFullscreen(); clearPressed(); taps.length = 0; startGame(); return; } if (IS_TOUCH) goFullscreen(); APP.state = 'select'; playMusic('music_theme'); clearPressed(); taps.length = 0; }
 function drawCornerBtns() {
   TITLE_BTNS().forEach(b => { ctx.fillStyle = 'rgba(0,0,0,0.55)'; rrect(b.x, b.y, b.w, b.h, 10); ctx.fill(); txt(b.id === 'mute' ? (muted ? '🔇' : '🔊') : '⛶', b.x + b.w / 2, b.y + b.h / 2 + 1, 22, '#fff', 'center', 700); });
 }
 function cornerTap(p) { for (const b of TITLE_BTNS()) if (hitRect(p, b.x, b.y, b.w, b.h)) { if (b.id === 'mute') setMute(!muted); else goFullscreen(); return true; } return false; }
-const SEL_CARDS = () => CHARS.map((c, i) => ({ i, x: W - 30 - (i + 1) * 222 + 8, y: 70, w: 210, h: 380 }));
+const SEL_CARDS = () => CHARS.map((c, i) => ({ i, x: W / 2 + 444 - (i + 1) * 222 + 6, y: 70, w: 210, h: 380 }));
 function drawSelect() {
   drawBackdrop(0.75, 0);
   txt(APP.mode === 'sixty' ? 'אתגר 60 שניות · בחרו לוחם' : 'בחרו לוחם פותח', W / 2, 36, 34, '#ffd23f', 'center', 900, '#000', 7);
-  txt('מחליפים תוך כדי קרב (החלפה באמצע רצף = מתקפת צוות) · הולכים לתוך אויב = תפיסה וזריקה', W / 2, 470, 17, '#fff', 'center', 700, '#000', 4);
+  txt('אגרוף + בעיטה = קומבו · החזיקו = מכה כבדה שמעיפה לקיר · הולכים לתוך אויב = תפיסה · החלפה באמצע רצף = מתקפת צוות', W / 2, 470, 15, '#fff', 'center', 700, '#000', 4);
   SEL_CARDS().forEach(cd => {
     const C = CHARS[cd.i], sel = APP.sel === cd.i;
     ctx.save(); ctx.fillStyle = sel ? 'rgba(40,10,15,0.92)' : 'rgba(0,0,0,0.6)'; rrect(cd.x, cd.y, cd.w, cd.h, 14); ctx.fill(); ctx.lineWidth = sel ? 5 : 2; ctx.strokeStyle = sel ? C.color : '#555'; ctx.stroke();
@@ -205,10 +213,10 @@ function drawComic() {
 const RES_BTNS = () => [{ id: 'share', x: W / 2 + 120, y: 452, w: 230, h: 52, label: 'שתפו כרטיס ציון', col: '#2fd6ff' }, { id: 'again', x: W / 2 - 100, y: 452, w: 200, h: 52, label: 'שחקו שוב', col: '#ff3b4a' }, { id: 'menu', x: W / 2 - 330, y: 452, w: 200, h: 52, label: 'תפריט ראשי', col: '#555' }];
 function drawResults() {
   drawBackdrop(0.78, 0); const R = APP.results;
-  const six = R.mode === 'sixty'; txt(six ? (R.win ? 'אתגר 60 שניות – הזמן נגמר!' : 'הצוות נפל...') : (R.win ? 'השלב הושלם!' : 'הצוות נפל...'), W / 2, 46, 46, R.win ? '#7dff8a' : '#ff6b6b', 'center', 900, '#000', 8);
+  const six = R.mode === 'sixty'; txt(six ? (R.win ? (R.daily ? `אתגר יומי ${fmtDate(R.daily)} – הזמן נגמר!` : 'אתגר 60 שניות – הזמן נגמר!') : 'הצוות נפל...') : (R.win ? 'השלב הושלם!' : 'הצוות נפל...'), W / 2, 46, 46, R.win ? '#7dff8a' : '#ff6b6b', 'center', 900, '#000', 8);
   if (APP.cardImg && APP.cardImg.complete) { const ch = 360, cw = ch * 1080 / 1350; ctx.drawImage(APP.cardImg, 50, 80, cw, ch); ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.strokeRect(50, 80, cw, ch); }
-  const rows = six ? [['ניקוד', R.score.toLocaleString('en-US')], ['נוקאאוטים', String(R.kos)], ['רצף מקסימלי', '×' + R.maxCombo], ['כסף', '₪' + R.cash], ['לוחם פותח', R.hero], ['שיא 60 שניות', R.best.toLocaleString('en-US') + (R.newBest ? ' – שיא חדש!' : '')]]
-    : [['ניקוד', R.score.toLocaleString('en-US')], ['זמן', fmtTime(R.time)], ['רצף מקסימלי', '×' + R.maxCombo], ['נוקאאוטים', String(R.kos)], ['כסף', '₪' + R.cash], ['קלף לוחם', R.card ? '1/60 ★' : '0/60 (מוסתר בארגז...)'], ['שיא אישי', R.best.toLocaleString('en-US') + (R.newBest ? ' – שיא חדש!' : '')]];
+  const rows = six ? [['ניקוד', R.score.toLocaleString('en-US')], ['אויבים שהובסו', String(R.kos)], ['רצף מקסימלי', '×' + R.maxCombo], ['כסף', '₪' + R.cash], ['לוחם פותח', R.hero], [R.daily ? 'שיא היום' : 'שיא 60 שניות', R.best.toLocaleString('en-US') + (R.newBest ? ' – שיא חדש!' : '')]]
+    : [['ניקוד', R.score.toLocaleString('en-US')], ['זמן', fmtTime(R.time)], ['רצף מקסימלי', '×' + R.maxCombo], ['אויבים שהובסו', String(R.kos)], ['כסף', '₪' + R.cash], ['קלף לוחם', R.card ? '1/60 ★' : '0/60 (מוסתר בארגז...)'], ['שיא אישי', R.best.toLocaleString('en-US') + (R.newBest ? ' – שיא חדש!' : '')]];
   rows.forEach((r, i) => { const y = 110 + i * 46; txt(r[0], W - 60, y, 24, '#ccc', 'right', 700); txt(r[1], W - 330, y, 28, i === 0 ? '#ffd23f' : '#fff', 'right', 900, '#000', 4); });
   RES_BTNS().forEach(b => { ctx.fillStyle = b.col; rrect(b.x, b.y, b.w, b.h, 14); ctx.fill(); txt(b.label, b.x + b.w / 2, b.y + b.h / 2, 24, '#fff', 'center', 900, '#000', 4); });
   if (APP.toast) { APP.toast.t -= 1 / 60; txt(APP.toast.text, W / 2, 520, 20, '#7dff8a', 'center', 800, '#000', 4); if (APP.toast.t <= 0) APP.toast = null; }
@@ -227,19 +235,19 @@ function frame(now) {
   // input handling per state
   if (consume('mute')) setMute(!muted);
   if (APP.state === 'title' && !portrait) {
-    if (consume('left') || consume('right') || consume('up') || consume('down')) { APP.menu = 1 - APP.menu; sfx('tag', 0.5); }
+    if (consume('left') || consume('down')) { APP.menu = (APP.menu + 1) % 3; sfx('tag', 0.5); } if (consume('right') || consume('up')) { APP.menu = (APP.menu + 2) % 3; sfx('tag', 0.5); }
     if (!APP.themeOn && AC.state === 'running') { APP.themeOn = true; playMusic('music_theme'); }
     const tp = taps.shift(); if (tp && cornerTap(tp)) { } else if (tp) { MENU_BTNS().forEach((b, i) => { if (hitRect(tp, b.x, b.y, b.w, b.h)) chooseMode(i); }); }
-    else if (consume('ok') || consume('attack')) chooseMode(APP.menu);
+    else if (consume('ok') || consumeHit()) chooseMode(APP.menu);
   } else if (APP.state === 'select') {
     if (consume('left')) APP.sel = Math.min(3, APP.sel + 1); if (consume('right')) APP.sel = Math.max(0, APP.sel - 1);
-    const tp = taps.shift(); let go = consume('ok') || consume('attack');
+    const tp = taps.shift(); let go = consume('ok') || consumeHit();
     if (tp && !cornerTap(tp)) { SEL_CARDS().forEach(cd => { if (hitRect(tp, cd.x, cd.y, cd.w, cd.h)) { if (APP.sel === cd.i) go = true; APP.sel = cd.i; sfx('tag', 0.6); } }); if (hitRect(tp, W / 2 - 120, 488, 240, 46)) go = true; }
     if (go) { clearPressed(); taps.length = 0; if (APP.mode === 'sixty') startGame(); else startComic(COMIC_INTRO, startGame); }
   } else if (APP.state === 'comic') {
     const tp = taps.shift();
     if (tp && hitRect(tp, W - 110, H - 62, 80, 36)) { const f = APP.comic.onDone; APP.comic = null; if (curVo) try { curVo.stop(); } catch (e) { } f(); }
-    else if (tp || consume('ok') || consume('attack') || consume('jump')) comicNext();
+    else if (tp || consume('ok') || consumeHit() || consume('jump')) comicNext();
   } else if (APP.state === 'play') {
     if (portrait) APP.paused = true;
     if (consume('pause')) APP.paused = !APP.paused;
@@ -276,13 +284,14 @@ function frame(now) {
   ctx.restore();
   requestAnimationFrame(frame);
 }
-document.addEventListener('visibilitychange', () => { if (document.hidden) { if (APP.state === 'play') APP.paused = true; AC.suspend && AC.suspend(); } else if (AC.resume) AC.resume(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) { if (APP.state === 'play') APP.paused = true; AC.suspend && AC.suspend(); } else tryResume(); });
 // test / debug hooks (used by automated smoke tests)
 window.ACE = {
   get app() { return APP; }, get G() { return G; },
   quickStart(ci = 0, mode = 'story') { APP.sel = ci; APP.mode = mode; startGame(); },
   warp(x) { G.P.x = x; G.camX = Math.max(0, x - W * 0.42); },
   clearWave() { G.enemies.forEach(e => { if (!e.boss) { e.dead = true; e.alpha = 0; } }); G.pendingSpawns = []; },
+  get audio() { return Object.assign({ state: AC.state }, AUDIO_STATS); }, get layout() { return { W, VIEW, SAFE, BTN }; },
   fillMeter() { TM().meter = 100; }, godMode(on = true) { G.god = on; }, setTime(t) { G.timeLeft = t; },
 };
 loadAll(); requestAnimationFrame(frame);

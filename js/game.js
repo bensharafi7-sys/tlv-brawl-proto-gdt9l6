@@ -4,17 +4,17 @@ const FY0 = 410, FY1 = 530;           // walkable depth band (screen y of feet)
 const LEVEL_W = 4700, GRAV = 1700;
 const CHARS = [
   { id: 'AceAf', name: 'Ace-Af', vo: 'ace', style: 'אגרוף + קונג פו', weapon: 'אגרופן זהב + מקל', superName: 'חליפה שחורה', color: '#ff3b4a',
-    artFace: -1, h: 238, spd: 235, combo: [9, 9, 11, 17], gap: 0.21, range: 108, sp: { name: 'מקל', dmg: 22, range: 140, cd: 0.8, sfx: 'bat', col: '#d9d9e6' }, stat: { spd: 3, pow: 3 },
+    artFace: -1, h: 238, spd: 235, combo: [9, 9, 11, 17], punch: [8, 9, 14], kick: [10, 11, 16], mix: { PPK: { name: 'בעיטת סיבוב', dmg: 18, frame: 'kick', knock: 'big', spin: 1 }, KKP: { name: 'אגרופן זהב', dmg: 20, frame: 'punch', knock: 'big' }, PKP: { name: 'מקל הקונג פו', dmg: 19, frame: 'heavy', knock: 1, range: 20 } }, gap: 0.21, range: 108, sp: { name: 'מקל', dmg: 22, range: 140, cd: 0.8, sfx: 'bat', col: '#d9d9e6' }, stat: { spd: 3, pow: 3 },
     vTag: 'ace_1', tagLine: 'הגיע הזמן לסדר חשבון.', vSuper: 'ace_2', superLine: 'זה הכל?', vWin: 'ace_3', winLine: 'העיר שלנו.' },
   { id: 'Daniel', name: 'Daniel', vo: 'dan', style: 'קיקבוקס + קפוארה', weapon: 'שוט שרשרת', superName: 'סופת שרשרת', color: '#2fd6ff',
-    artFace: 1, h: 232, spd: 275, combo: [7, 7, 8, 9, 15], gap: 0.17, range: 114, sp: { name: 'שרשרת', dmg: 17, range: 210, cd: 0.75, sfx: 'chain', col: '#cfe8ff', pull: true }, stat: { spd: 4, pow: 2 },
+    artFace: 1, h: 232, spd: 275, combo: [7, 7, 8, 9, 15], punch: [6, 7, 11], kick: [8, 8, 10, 15], mix: { PPK: { name: 'מגל קפוארה', dmg: 16, frame: 'kick', knock: 'big', spin: 1 }, KP: { name: 'שוט שרשרת', dmg: 14, frame: 'heavy', knock: 1, range: 60 }, KKKP: { name: 'סופת בעיטות', dmg: 22, frame: 'kick', knock: 'big', spin: 1 } }, gap: 0.17, range: 114, sp: { name: 'שרשרת', dmg: 17, range: 210, cd: 0.75, sfx: 'chain', col: '#cfe8ff', pull: true }, stat: { spd: 4, pow: 2 },
     vTag: 'daniel_1', tagLine: 'תסתכל עליי.', vSuper: 'daniel_2', superLine: 'עוד אחד!', vWin: 'daniel_3', winLine: 'קל מדי.' },
   { id: 'Ravid', name: 'Ravid', vo: 'rav', style: 'נינג\'ה, קטאנה וטונפה', weapon: 'קטאנה + טונפה', superName: 'הצל הכפול', color: '#b46bff',
-    artFace: -1, h: 234, spd: 300, combo: [8, 8, 10, 14], gap: 0.15, range: 116, sp: { name: 'דאש', dmg: 20, range: 230, cd: 0.9, sfx: 'blade', col: '#e6d4ff', dash: true }, stat: { spd: 5, pow: 2 },
-    vTag: 'ravid_1', tagLine: 'בשקט.', vSuper: 'ravid_2', superLine: 'לא ראית אותי באה.', vWin: 'ravid_3', winLine: 'גמרנו.' },
+    artFace: -1, h: 234, spd: 300, combo: [8, 8, 10, 14], punch: [7, 8, 12], kick: [8, 9, 13], mix: { PKP: { name: 'חיתוך צל', dmg: 18, frame: 'heavy', knock: 1, lunge: 50 }, KKP: { name: 'קטאנה עולה', dmg: 20, frame: 'heavy', knock: 'big' }, PPK: { name: 'בעיטת נינג\'ה', dmg: 16, frame: 'kick', knock: 1, spin: 1 } }, gap: 0.15, range: 116, sp: { name: 'דאש', dmg: 20, range: 230, cd: 0.9, sfx: 'blade', col: '#e6d4ff', dash: true }, stat: { spd: 5, pow: 2 },
+    vTag: 'ravid_1', tagLine: 'בשקט.', vSuper: 'ravid_2', superLine: 'לא ציפית לזה.', vWin: 'ravid_3', winLine: 'גמרנו.' },
   { id: 'Benjo', name: 'Benjo', vo: 'ben', style: 'בריון כבד / היאבקות', weapon: 'מחבט עם שרשרת', superName: 'עפים הביתה', color: '#ff9a2e',
-    artFace: 1, h: 248, spd: 190, combo: [13, 13, 24], gap: 0.31, range: 122, sp: { name: 'מחבט', dmg: 32, range: 150, cd: 1.0, sfx: 'bat', col: '#ffcf8a', big: true }, stat: { spd: 2, pow: 5 },
-    vTag: 'benjo_1', tagLine: 'בוא אליי.', vSuper: 'benjo_2', superLine: 'עכשיו אני כועס!', vWin: 'benjo_3', winLine: 'מי הבא?' },
+    artFace: 1, h: 248, spd: 190, combo: [13, 13, 24], punch: [12, 13, 22], kick: [14, 24], mix: { PK: { name: 'דריסה', dmg: 20, frame: 'kick', knock: 'big' }, KP: { name: 'מחבט הביתה', dmg: 26, frame: 'heavy', knock: 'big', wall: 1 } }, gap: 0.31, range: 122, sp: { name: 'מחבט', dmg: 32, range: 150, cd: 1.0, sfx: 'bat', col: '#ffcf8a', big: true }, stat: { spd: 2, pow: 5 },
+    vTag: 'benjo_1', tagLine: 'בוא אליי.', vSuper: 'benjo_2', superLine: 'עכשיו אני כועס!', vWin: 'benjo_3', winLine: 'מי הבא בתור?' },
 ];
 const ETYPES = {
   grunt: { img: 'en_grunt', h: 228, hp: 45, spd: 120, dmg: 8, range: 86, wind: 0.42, cd: 1.1, score: 100, armor: 0, name: 'בריון' },
@@ -31,14 +31,21 @@ const BOSS_TRIG = 3990, BOSS_LOCK = 3740;
 
 let G = null;
 const SIXTY_LOCK = 1300;
-function newGame(startChar, mode = 'story') {
+// daily challenge: same seeded 60-second run (spawns, crates, hero of the day) for everyone on a given date
+function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function dateSeed(d) { let h = 2166136261; for (const ch of 'aceaf-' + d) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
+function todayStr() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+function dailyHero(d) { return dateSeed(d) % 4; }
+let RNG = Math.random; const srnd = (a, b) => a + RNG() * (b - a);
+function newGame(startChar, mode = 'story', daily = null) {
+  RNG = daily ? mulberry32(dateSeed(daily)) : Math.random;
   G = {
     state: 'play', t: 0, time: 0, camX: 0, camLock: null, shake: 0, hitstop: 0, timeScale: 1, slowT: 0, zoom: 1,
     score: 0, cash: 0, combo: 0, comboT: 0, maxCombo: 0, kos: 0, card: false, wave: 0, waveActive: false, goT: 0,
     team: CHARS.map(c => ({ hp: 100, max: 100, meter: 0, down: false })), active: startChar, swCd: 0,
     P: null, enemies: [], pickups: [], crates: [], fx: [], nums: [], projs: [], boss: null, bossPhase: 0, cine: null,
     banner: null, over: false, win: false, lastHitT: -9, flash: 0, introCard: null, pendingSpawns: [], tagFx: null,
-    mode, timeLeft: 60, countdown: mode === 'sixty' ? 3.4 : 0, spawnT: 0, crateT: 8, grabHint: false, startChar,
+    mode, daily, timeLeft: 60, countdown: mode === 'sixty' ? 3.4 : 0, spawnT: 0, crateT: 8, grabHint: false, startChar,
   };
   G.P = { x: 120, y: 470, z: 0, vz: 0, face: 1, st: 'idle', t: 0, atkI: 0, atkT: 0, queued: false, hurtT: 0, inv: 1, spCd: 0, weapon: null, walkT: 0, flashT: 0, airAtk: false, superT: 0, landT: 0, grab: null, grabPush: 0, hit: null };
   if (mode === 'sixty') {
@@ -63,10 +70,12 @@ const TM = () => G.team[G.active];
 
 // ---------- spawning ----------
 function spawnEnemy(type, side, x, y) {
+  const nE = G.enemies.length;
   const T = ETYPES[type];
-  const sx = x != null ? x : (side > 0 ? G.camX + W + rnd(40, 140) : G.camX - rnd(40, 140));
-  G.enemies.push({ type, T, x: sx, y: y != null ? y : rnd(FY0 + 10, FY1 - 6), z: 0, vz: 0, vx: 0, face: side > 0 ? -1 : 1, hp: T.hp, max: T.hp,
-    st: 'walk', t: 0, cd: rnd(0.4, 1.2), hits: 0, flashT: 0, dead: false, alpha: 1, id: Math.random() });
+  const sx = x != null ? x : (side > 0 ? G.camX + W + srnd(40, 140) : G.camX - srnd(40, 140));
+  G.enemies.push({ type, T, x: sx, y: y != null ? y : srnd(FY0 + 10, FY1 - 6), z: 0, vz: 0, vx: 0, face: side > 0 ? -1 : 1, hp: T.hp, max: T.hp,
+    st: 'walk', t: 0, cd: srnd(0.4, 1.2), y0: 0, hits: 0, flashT: 0, dead: false, alpha: 1, id: Math.random() });
+  const ne = G.enemies[nE]; if (ne) ne.y0 = Math.round(ne.y);
 }
 // 60-second mode spawner
 function sixtySpawner(dt) {
@@ -75,12 +84,12 @@ function sixtySpawner(dt) {
   const want = Math.min(6, 3 + Math.floor(el / 14));
   if (alive < want && G.spawnT <= 0) {
     const bru = G.enemies.filter(e => !e.dead && e.type === 'bruiser').length;
-    const r = Math.random(); let type = 'grunt';
+    const r = RNG(); let type = 'grunt';
     if (el > 22 && bru < (el > 42 ? 2 : 1) && r < 0.22) type = 'bruiser'; else if (el > 8 && r < 0.6) type = 'knife';
-    spawnEnemy(type, Math.random() < 0.5 ? 1 : -1); G.spawnT = Math.max(0.35, 1.1 - el / 80);
+    spawnEnemy(type, RNG() < 0.5 ? 1 : -1); G.spawnT = Math.max(0.35, 1.1 - el / 80);
   }
-  G.crateT -= dt; if (G.crateT <= 0) { G.crateT = 12; if (G.crates.filter(c => c.hp > 0).length < 3) { const items = [['falafel'], ['cash', 'cash'], ['shawarma'], ['falafel', 'cash']][Math.floor(rnd(0, 4))];
-    G.crates.push({ x: G.camX + rnd(120, W - 120), y: rnd(FY0 + 10, FY1 - 10), hp: 2, items, shake: 0.3 }); } }
+  G.crateT -= dt; if (G.crateT <= 0) { G.crateT = 12; if (G.crates.filter(c => c.hp > 0).length < 3) { const items = [['falafel'], ['cash', 'cash'], ['shawarma'], ['falafel', 'cash']][Math.floor(srnd(0, 4))];
+    G.crates.push({ x: G.camX + srnd(120, W - 120), y: srnd(FY0 + 10, FY1 - 10), hp: 2, items, shake: 0.3 }); } }
 }
 function sixtyTimeUp() {
   G.over = true; G.win = true; slowmo(0.3, 1.4); G.zoomTo = 1.12; stopMusic(0.3); stinger('ko'); sfx('ko', 0.7);
@@ -121,6 +130,7 @@ function hitEnemy(e, dmg, opts = {}) {
   burst(hx, hy, opts.col || '#fff6c2', dmg >= 20 ? 16 : 9, dmg >= 20 ? 420 : 300); ring(hx, hy, opts.col || '#fff', 8, dmg >= 20 ? 80 : 50, 0.22);
   G.hitstop = Math.max(G.hitstop, dmg >= 20 ? 0.11 : 0.055); shake(dmg >= 20 ? 9 : 4);
   sfx(dmg >= 20 ? 'hit_heavy' : 'hit_light', dmg >= 20 ? 0.9 : 0.7);
+  if (opts.heavy) { sfx('heavy', 1); G.hitstop = Math.max(G.hitstop, 0.12 + 0.06 * (opts.lvl || 0)); shake(10 + 6 * (opts.lvl || 0)); ring(hx, hy, '#fff', 20, 140, 0.3); }
   const dir = opts.dir != null ? opts.dir : (e.x >= P.x ? 1 : -1);
   if (!opts.held) e.face = -dir; e.recoil = 1;
   if (e.boss) {
@@ -131,11 +141,13 @@ function hitEnemy(e, dmg, opts = {}) {
   }
   if (opts.held) { if (e.hp <= 0) { releaseGrab(); killEnemy(e, dir, true); } return true; }
   const armored = e.T.armor && !opts.knock && (e.hits = (e.hits || 0) + 1) % (e.T.armor + 1) !== 0 && e.hp > 0;
-  if (e.hp <= 0) { killEnemy(e, dir, opts.knock === 'big'); return true; }
-  if (opts.knock) { launch(e, dir, opts.knock === 'big' ? 1.6 : 1); }
+  if (e.hp <= 0) { killEnemy(e, dir, opts.knock === 'big'); if (opts.wall) fling(e, dir, opts.heavy ? (opts.lvl || 0) : 0.5); return true; }
+  if (opts.knock) { launch(e, dir, opts.knock === 'big' ? 1.6 : 1); if (opts.wall) fling(e, dir, opts.heavy ? (opts.lvl || 0) : 0.5); }
   else if (!armored) { e.st = 'hurt'; e.t = 0; e.vx = dir * 90; }
   return true;
 }
+// heavy blow: long, flat, low-gravity flight that carries into the screen edge / arena wall -> bounce
+function fling(e, dir, lvl) { e.st = 'air'; e.t = 0; e.wallB = 1; e.z = Math.max(e.z, 4); e.vz = 360 + 80 * lvl; e.vx = dir * (720 + 420 * lvl); }
 function launch(e, dir, pow = 1) { e.st = 'air'; e.t = 0; e.vz = 380 * pow; e.z = Math.max(e.z, 1); e.vx = dir * 260 * pow; }
 function killEnemy(e, dir, big) {
   e.dead = true; launch(e, dir, big ? 1.7 : 1.15); e.hp = 0; G.kos++; G.score += e.T.score || 1000;
@@ -145,8 +157,8 @@ function killEnemy(e, dir, big) {
     if (alive === 0 && G.waveActive && !G.boss && G.mode === 'story') { slowmo(0.35, 0.7); }
   } else {
     G.score += 5000; slowmo(0.2, 2.2); G.zoomTo = 1.25; sfx('ko', 1); stinger('ko'); stopMusic(0.8); G.over = true; releaseGrab();
-    voice('narr_2', 'נוקאאוט!', '');
-    G.banner = { text: 'נוקאאוט!', t: 2.4, big: true };
+    voice('narr_2', 'מנוצח!', '');
+    G.banner = { text: 'מנוצח!', t: 2.4, big: true };
     G.enemies.forEach(o => { if (!o.dead && o !== e) killEnemy(o, o.x > e.x ? 1 : -1); });
     const Gs = G, C = CH(), live = () => G === Gs && G.state === 'play';
     setTimeout(() => { if (live()) voice('boss_2', 'זה לא נגמר...', 'הסוחר'); }, 1500);
@@ -177,25 +189,62 @@ function playerAttack() {
     if (wpn.uses <= 0) { if (wpn.type === 'bottle') { sfx('bottle', 0.9); burst(P.x + P.face * 60, P.y - 90, '#9fe8a8', 14, 300, 'glass'); } G.banner = { text: 'הנשק נשבר', t: 0.9, small: true }; P.weapon = null; }
     return;
   }
-  const i = P.atkI % C.combo.length; const fin = i === C.combo.length - 1;
-  const wind = fin ? 0.085 : 0.045;
-  P.st = 'atk'; P.t = 0; P.wind = wind; P.atkDur = C.gap + wind + (fin ? 0.1 : 0); P.atkI++; P.smear = { col: C.id === 'Ravid' ? '#e6d4ff' : '#ffffff', fin, kick: C.id === 'Daniel' ? (i % 2) : 0, alt: i % 2 };
+  doAttack('P');
+}
+const HK = C => FRAME_HEROES[C.id];
+// punch/kick chains per hero; mixing P and K inside the chain window triggers a named combo (C.mix)
+function doAttack(btn) {
+  const P = G.P, C = CH();
+  if (P.weapon) { playerAttack(); return; }
+  if (G.time - (P.lastAtkT || 0) > 0.65 || !P.chain) P.chain = [];
+  P.chain.push(btn); if (P.chain.length > 5) P.chain.shift(); P.lastAtkT = G.time;
+  const seq = P.chain.join(''); let mv = null, mixName = null;
+  for (const n of [4, 3, 2]) { if (seq.length < n) continue; const m = C.mix[seq.slice(-n)]; if (m) { mv = Object.assign({ mix: true }, m); mixName = m.name; break; } }
+  if (mv) P.chain = [];
+  else {
+    let run = 0; for (let i = P.chain.length - 1; i >= 0 && P.chain[i] === btn; i--) run++;
+    const arr = btn === 'P' ? C.punch : C.kick, i = (run - 1) % arr.length, fin = i === arr.length - 1;
+    mv = { dmg: arr[i], frame: btn === 'P' ? 'punch' : 'kick', fin, knock: fin ? 1 : null, kick: btn === 'K', alt: i % 2, idx: i };
+    if (fin) P.chain = [];
+  }
+  startMove(mv, mixName);
+}
+function startMove(mv, mixName) {
+  const P = G.P, C = CH(), hk = HK(C); const big = !!(mv.fin || mv.mix || mv.heavy); const kick = mv.frame === 'kick';
+  const wind = mv.heavy ? 0.07 : big ? 0.085 : (kick ? 0.06 : 0.045);
+  P.st = 'atk'; P.t = 0; P.wind = wind; P.atkDur = C.gap + wind + (big ? 0.1 : 0) + (kick ? 0.03 : 0) + (mv.heavy ? 0.12 : 0); P.mv = mv; P.atkI++;
+  P.smear = { col: mv.heavy ? '#fff2a8' : (C.id === 'Ravid' ? '#e6d4ff' : '#ffffff'), fin: big, kick: kick ? 1 : 0, alt: mv.alt || 0, big: mv.frame === 'heavy' };
+  if (mixName) { addNum(P.x, P.y - C.h - 40, mixName, C.color, true); G.score += 200; }
   P.hit = { at: wind, fn: () => {
-    sfx(C.id === 'Ravid' ? 'blade' : 'whoosh', 0.5, fin ? 0.8 : 1.1);
-    hitBox(P, C.range).forEach(e => hitEnemy(e, C.combo[i], { knock: fin ? 1 : null, col: C.color }));
-    hitCrates(P, C.range); if (fin) shake(3); P.x += P.face * (fin ? 14 : 6);
+    sfx(C.id === 'Ravid' && !kick ? 'blade' : 'whoosh', big ? 0.7 : 0.5, big ? 0.8 : (kick ? 0.95 : 1.1));
+    if (mv.heavy) vx(hk, 'heavy', 1); else if (big) vx(hk, kick ? 'kick' : 'heavy', 0.9); else if (Math.random() < (kick ? 0.55 : 0.4)) vx(hk, kick ? 'kick' : 'punch', 0.75);
+    if (mv.lunge) P.x = clamp(P.x + P.face * mv.lunge, G.camX + 28, G.camX + W - 28);
+    const range = C.range + (kick ? 14 : 0) + (mv.frame === 'heavy' ? 26 : 0) + (mv.range || 0);
+    hitBox(P, range, mv.heavy ? 44 : 34).forEach(e => hitEnemy(e, mv.dmg, { knock: mv.knock, col: C.color, wall: mv.wall || mv.heavy, heavy: mv.heavy, lvl: mv.lvl }));
+    hitCrates(P, range); if (big) shake(mv.heavy ? 5 : 3); P.x += P.face * (mv.heavy ? 22 : big ? 14 : 6);
   } };
+}
+// hold punch/kick = charge a heavy blow (glow + rising sound), release = heavy hit with big knockback + wall bounce
+function startCharge(btn) {
+  const P = G.P; P.st = 'charge'; P.t = 0; P.chgBtn = btn; P.chgSrc = sfx('charge', 0.75); P.chgFull = false;
+}
+function stopChargeSound() { const P = G.P; if (P && P.chgSrc) { try { P.chgSrc.stop(); } catch (e) { } P.chgSrc = null; } }
+function releaseCharge() {
+  const P = G.P, C = CH(); stopChargeSound();
+  const lvl = clamp(P.t / 0.9, 0, 1), base = C.id === 'Benjo' ? 1.2 : 1;
+  startMove({ dmg: Math.round(lerp(20, 38, lvl) * base), frame: 'heavy', heavy: true, knock: 'big', wall: true, lvl, range: 10 + lvl * 20, lunge: 30 + 50 * lvl }, lvl >= 1 ? 'מכה כבדה!' : null);
+  if (lvl >= 1) G.flash = Math.max(G.flash, 0.08);
 }
 function playerSpecial() {
   const P = G.P, C = CH(), tm = TM();
   if (tm.meter >= 100) { startSuper(); return; }
   if (P.spCd > 0) return;
   const sp = C.sp; P.spCd = sp.cd; P.st = 'sp'; P.t = 0; P.wind = 0; P.atkDur = 0.42; P.smear = { col: sp.col, big: true, sp: true };
-  sfx(sp.sfx, 0.9); sfx('whoosh', 0.6, 0.8);
+  sfx(sp.sfx, 0.9); sfx('whoosh', 0.6, 0.8); vx(HK(C), 'heavy', 0.8);
   if (sp.dash) { P.dashFrom = P.x; P.inv = 0.45; P.x = clamp(P.x + P.face * sp.range, camMin() + 30, camMax() - 30);
     G.enemies.filter(e => !e.dead && Math.abs(e.y - P.y) < 42 && Math.min(P.dashFrom, P.x) - 30 < e.x && e.x < Math.max(P.dashFrom, P.x) + 30)
       .forEach(e => hitEnemy(e, sp.dmg, { knock: 1, dir: P.face, col: C.color }));
-    for (let k = 0; k < 8; k++) G.fx.push({ kind: 'ghost', x: lerp(P.dashFrom, P.x, k / 8), y: P.y, img: 'hero_' + C.id, h: C.h, face: P.face, artFace: C.artFace, t: 0.3 + k * 0.03, max: 0.5, col: C.color });
+    for (let k = 0; k < 8; k++) G.fx.push({ kind: 'ghost', x: lerp(P.dashFrom, P.x, k / 8), y: P.y, img: 'hero_' + C.id, cid: C.id, fr: 'heavy', h: C.h, face: P.face, artFace: C.artFace, t: 0.3 + k * 0.03, max: 0.5, col: C.color });
     hitCrates(P, 30); return; }
   const targets = hitBox(P, sp.range, sp.pull ? 50 : 40);
   targets.forEach(e => { hitEnemy(e, sp.dmg, { knock: sp.big ? 'big' : (sp.pull ? null : 1), col: C.color });
@@ -222,14 +271,14 @@ function trySwitch(to) {
   const n = CHARS.length; let idx = to;
   if (idx == null) { for (let k = 1; k <= n; k++) { const j = (G.active + k) % n; if (!G.team[j].down) { idx = j; break; } } }
   if (idx == null || idx === G.active || G.team[idx].down) { if (idx != null && G.team[idx] && G.team[idx].down) G.banner = { text: `${CHARS[idx].name} מחוץ למשחק`, t: 1, small: true }; return; }
-  releaseGrab();
+  releaseGrab(); stopChargeSound();
   const P = G.P; const tagAtk = (G.time - G.lastHitT) < 0.75 && G.combo >= 2;
   const from = G.active; G.active = idx; G.swCd = 0.7; P.st = 'idle'; P.t = 0; P.atkI = 0; P.inv = Math.max(P.inv, 0.5);
   G.tagFx = { from, to: idx, t: 0.5, tag: tagAtk };
   sfx('tag', 0.9); burst(P.x, P.y - 80, CHARS[idx].color, 14, 280);
   if (tagAtk) {
     G.banner = { text: 'מתקפת צוות!', t: 1.2 }; voice(CHARS[idx].vTag, CHARS[idx].tagLine, CHARS[idx].name);
-    G.fx.push({ kind: 'ghost', x: P.x - P.face * 80, y: P.y, img: 'hero_' + CHARS[from].id, h: CHARS[from].h, face: P.face, artFace: CHARS[from].artFace, t: 0.5, max: 0.5, col: CHARS[from].color });
+    G.fx.push({ kind: 'ghost', x: P.x - P.face * 80, y: P.y, img: 'hero_' + CHARS[from].id, cid: CHARS[from].id, fr: 'kick', h: CHARS[from].h, face: P.face, artFace: CHARS[from].artFace, t: 0.5, max: 0.5, col: CHARS[from].color });
     P.st = 'sp'; P.t = 0; P.wind = 0; P.atkDur = 0.4; P.smear = { col: CHARS[idx].color, big: true, sp: true };
     hitBox(P, 190, 50, 60).forEach(e => hitEnemy(e, 26, { knock: 'big', col: CHARS[idx].color })); G.score += 500; shake(10); G.flash = 0.15;
   } else voice(CHARS[idx].vTag, CHARS[idx].tagLine, CHARS[idx].name);
@@ -239,7 +288,7 @@ function canGrab(e) { const C = CH(); return !e.boss && !e.dead && e.z < 5 && ['
 function startGrab(e) {
   const P = G.P; P.grab = { e, t: 0, knees: 0 }; P.st = 'grab'; P.t = 0; P.grabPush = 0;
   e.st = 'grabbed'; e.t = 0; e.face = -P.face; e.x = P.x + P.face * 58; e.y = P.y; sfx('tag', 0.6, 0.7); shake(2);
-  if (!G.grabHint) { G.grabHint = true; G.banner = { text: usingTouch ? 'תפיסה! מכה = ברך · קפיצה/מיוחד = זריקה' : 'תפיסה! J = ברך · K = זריקה לאחור · L = זריקה קדימה', t: 2.2, small: true }; }
+  if (!G.grabHint) { G.grabHint = true; G.banner = { text: usingTouch ? 'תפיסה! אגרוף = ברך · בעיטה = זריקה · קפיצה = זריקה לאחור' : 'תפיסה! J = ברך · K = זריקה · רווח = זריקה לאחור', t: 2.4, small: true }; }
 }
 function releaseGrab(push = true) {
   const P = G && G.P; if (!P || !P.grab) return; const e = P.grab.e; P.grab = null;
@@ -250,7 +299,7 @@ function throwGrabbed(dir) { // dir: 1 forward, -1 backward (suplex)
   const P = G.P, C = CH(); const g = P.grab; if (!g) return; const e = g.e; P.grab = null;
   const wd = P.face * dir; P.st = 'throw'; P.t = 0; P.atkDur = 0.42; P.throwDir = dir; P.smear = { col: C.color, big: true };
   if (dir < 0) { e.x = P.x - P.face * 30; P.face = -P.face; }
-  sfx('whoosh', 0.9, 0.7); voiceBark();
+  sfx('whoosh', 0.9, 0.7); vx(HK(C), 'heavy', 0.9);
   hitEnemy(e, 16, { held: true, col: C.color, dir: wd });
   if (!e.dead) { e.st = 'thrown'; e.t = 0; e.vz = 420; e.z = 30; e.vx = wd * 560; e.face = -wd; e.thrHit = {}; }
   G.score += 300; shake(5);
@@ -264,19 +313,19 @@ function updateGrab(dt) {
   if (consume('switch')) { trySwitch(null); return; }
   if (P.kneeT > 0) { P.kneeT -= dt; return; }
   if (consume('jump')) { throwGrabbed(-1); return; }
-  if (consume('special')) { throwGrabbed(1); return; }
-  if (consume('attack')) {
+  if (consume('special') || consume('kick')) { throwGrabbed(1); return; }
+  if (consume('punch')) {
     const ax = inputAxis(); if (ax.x && Math.sign(ax.x) !== P.face) { throwGrabbed(-1); return; }
     if (g.knees >= 2) { throwGrabbed(1); return; }
-    g.knees++; P.kneeT = 0.2; P.kneeA = 0; sfx('hit_light', 0.8, 0.9); hitEnemy(e, 8, { held: true, col: CH().color, dir: P.face }); return;
+    g.knees++; P.kneeT = 0.2; P.kneeA = 0; sfx('hit_light', 0.8, 0.9); vx(HK(CH()), 'punch', 0.7); hitEnemy(e, 8, { held: true, col: CH().color, dir: P.face }); return;
   }
   if (g.t > 1.7) releaseGrab();
 }
 function hurtPlayer(dmg, dir, knock) {
   const P = G.P; if (P.inv > 0 || G.cine || G.over || G.god) return false;
-  releaseGrab(false);
+  releaseGrab(false); stopChargeSound();
   const tm = TM(); tm.hp = Math.max(0, tm.hp - dmg); addNum(P.x, P.y - 200, dmg, '#ff5a5a'); P.flashT = 0.15; shake(6); G.hitstop = 0.06;
-  sfx('hurt', 0.7); sfx('hit_light', 0.6); G.combo = 0; tm.meter = Math.min(100, tm.meter + dmg * 0.4);
+  sfx('hit_light', 0.6); vx(HK(CH()), tm.hp <= 0 ? 'ko' : 'hurt', 1); G.combo = 0; tm.meter = Math.min(100, tm.meter + dmg * 0.4);
   burst(P.x, P.y - 100, '#ffb0b0', 8, 260);
   if (P.weapon && Math.random() < 0.4) { G.pickups.push({ type: P.weapon.type, x: P.x - dir * 40, y: P.y, z: 30, vz: 200, t: 0, uses: P.weapon.uses }); P.weapon = null; }
   if (tm.hp <= 0) { tm.down = true; P.st = 'down'; P.t = 0; P.vz = 360; P.z = 1; P.kx = dir * 200; P.inv = 2.5; G.banner = { text: `${CH().name} נפל!`, t: 1.4, small: true }; return true; }
@@ -294,7 +343,7 @@ function update(dtReal) {
   if (G.countdown > 0) { const before = Math.ceil(G.countdown); G.countdown -= dtReal; const after = Math.ceil(G.countdown);
     if (after !== before && after > 0) sfx('go', 0.6, 0.9); if (G.countdown <= 0) { sfx('go', 0.9, 1.3); playMusic('music_sixty', 0.05, false); G.banner = { text: 'קדימה!', t: 0.9, big: true }; }
     G.t += dtReal; if (G.banner && G.countdown > 0) G.banner = null; updateFx(dtReal); return; }
-  if (G.introCard) { G.introCard.t -= dtReal; if (G.introCard.t <= 0 || (G.introCard.t < 2.2 && (consume('attack') || consume('ok') || taps.length))) { taps.length = 0; G.introCard = null; playMusic('music_boss'); if (G.boss) { G.boss.st = 'idle'; G.boss.t = 0; } } return; }
+  if (G.introCard) { G.introCard.t -= dtReal; if (G.introCard.t <= 0 || (G.introCard.t < 2.2 && (consumeHit() || consume('ok') || taps.length))) { taps.length = 0; G.introCard = null; playMusic('music_boss'); if (G.boss) { G.boss.st = 'idle'; G.boss.t = 0; } } return; }
   if (G.slowT > 0) { G.slowT -= dtReal; if (G.slowT <= 0) { G.timeScale = 1; G.zoomTo = 1; } }
   G.zoom = lerp(G.zoom, G.zoomTo || 1, 0.08);
   if (G.hitstop > 0) { G.hitstop -= dtReal; updateFx(dtReal * 0.2); return; }
@@ -344,7 +393,7 @@ function updatePlayer(dt) {
       if (tm.down) { // auto-switch
         const nxt = G.team.findIndex(t => !t.down);
         if (nxt < 0) { if (!G.over) { G.over = true; G.win = false; G.banner = { text: 'הצוות נפל...', t: 3, big: true }; stopMusic(1); setTimeout(() => { if (G && G.state === 'play') endStage(); }, 2400); } return; }
-        G.active = nxt; P.st = 'idle'; P.t = 0; P.inv = 1.5; P.atkI = 0; sfx('tag', 1); burst(P.x, P.y - 80, CHARS[nxt].color, 16, 300);
+        G.active = nxt; P.st = 'idle'; P.chain = []; P.t = 0; P.inv = 1.5; P.atkI = 0; sfx('tag', 1); burst(P.x, P.y - 80, CHARS[nxt].color, 16, 300);
         voice(CHARS[nxt].vTag, CHARS[nxt].tagLine, CHARS[nxt].name);
       } else { P.st = 'idle'; P.t = 0; }
     }
@@ -360,19 +409,28 @@ function updatePlayer(dt) {
   for (let i = 1; i <= 4; i++) if (consume('c' + i)) trySwitch(i - 1);
   if (consume('switch')) trySwitch(null);
   const busy = (P.st === 'atk' || P.st === 'sp') && P.t < P.atkDur;
+  if (P.st === 'charge') {
+    if (!P.chgFull && P.t >= 0.9) { P.chgFull = true; sfx('tag', 0.7, 1.5); ring(P.x, P.y - CH().h * 0.5, C.color, 20, 110, 0.3); }
+    if (!isHeld(P.chgBtn) || P.t > 1.8) releaseCharge();
+    clearPressed(); return;
+  }
   if (consume('special') && P.z === 0 && (!busy || P.t > P.atkDur * 0.6)) { playerSpecial(); return; }
   if (consume('jump') && P.z === 0 && !busy) { P.st = 'jump'; P.t = 0; P.vz = 640; P.z = 1; P.airAtk = false; sfx('whoosh', 0.3, 1.4); }
-  if (consume('attack')) {
-    if (P.z > 0 && !P.airAtk) { P.airAtk = true; P.st = 'jatk'; P.t = 0; sfx('whoosh', 0.6); }
+  const btn = consume('punch') ? 'P' : consume('kick') ? 'K' : null;
+  if (btn) {
+    if (P.z > 0 && !P.airAtk) { P.airAtk = true; P.st = 'jatk'; P.t = 0; sfx('whoosh', 0.6); vx(HK(C), 'kick', 0.7); }
     else if (P.z === 0) {
-      if (busy && P.t < P.atkDur * 0.45) P.queued = true;
-      else { if (!busy || P.t >= P.atkDur) { if (G.time - (P.lastAtkT || 0) > 0.6) P.atkI = 0; } P.lastAtkT = G.time; playerAttack(); }
+      if (busy && P.t < P.atkDur * 0.45) P.queued = btn;
+      else doAttack(btn);
     }
   }
-  if (P.queued && busy && P.t >= P.atkDur * 0.6) { P.queued = false; P.lastAtkT = G.time; playerAttack(); }
+  if (P.queued && busy && P.t >= P.atkDur * 0.6) { const b = P.queued; P.queued = false; doAttack(b); }
+  // long-press -> charge heavy (after the opening jab finishes)
+  const hb = isHeld('punch') ? 'punch' : isHeld('kick') ? 'kick' : null;
+  if (hb && P.z === 0 && !busy && !P.queued && !P.weapon && P.st !== 'jump' && performance.now() - (pressT[hb] || 1e15) > 260) { startCharge(hb); return; }
   if (P.st === 'jatk') { hitBox(P, C.range + 10, 40, 10).forEach(e => { if (!e.jHit) { e.jHit = true; hitEnemy(e, 14, { knock: 1, col: C.color }); setTimeout(() => e.jHit = false, 400); } }); }
   if ((P.st === 'atk' || P.st === 'sp') && P.t >= P.atkDur) { P.st = 'idle'; P.t = 0; }
-  const canMove = !(P.st === 'atk' || P.st === 'sp');
+  const canMove = !(P.st === 'atk' || P.st === 'sp' || P.st === 'charge');
   const sp = C.spd * (P.z > 0 ? 0.95 : 1);
   if (canMove) {
     P.x = clamp(P.x + ax.x * sp * dt, minX, maxX); P.y = clamp(P.y + ax.y * sp * 0.62 * dt, FY0, FY1);
@@ -397,7 +455,12 @@ function updateEnemy(e, dt) {
     return;
   }
   if (e.st === 'air') {
-    e.vz -= GRAV * dt; e.z += e.vz * dt; e.x += e.vx * dt;
+    e.vz -= GRAV * (e.wallB ? 0.55 : 1) * dt; e.z += e.vz * dt; e.x += e.vx * dt;
+    if (e.wallB) { const L = G.camX + 24, Rr = G.camX + W - 24; // wall bounce off the screen edge / arena wall
+      if ((e.x < L && e.vx < 0) || (e.x > Rr && e.vx > 0)) { e.wallB = 0; e.x = clamp(e.x, L, Rr); e.vx = -e.vx * 0.55; e.vz = Math.max(e.vz, 300); e.z = Math.max(e.z, 20);
+        sfx('wall', 1); shake(10); G.hitstop = Math.max(G.hitstop, 0.07); burst(e.x, e.y - 120, '#b07a3e', 14, 360, 'debris'); ring(e.x, e.y - 110, '#ffd23f', 10, 90, 0.25);
+        addNum(e.x, e.y - 220, 'קיר!', '#ffd23f', true); G.score += 300; G.combo++; G.comboT = 1.7; G.maxCombo = Math.max(G.maxCombo, G.combo);
+        if (!e.dead) { e.hp -= 8; if (e.hp <= 0) { e.hp = 0; e.dead = true; G.kos++; G.score += e.T.score || 100; } } } }
     if (e.z <= 0) { e.z = 0; e.vz = 0; e.st = 'down'; e.t = 0; sfx('stomp', 0.35, 1.3); burst(e.x, e.y, '#d8c8a8', 7, 160, 'dust'); shake(3); }
     return;
   }
@@ -562,7 +625,8 @@ function drawWorld() {
   G.enemies.forEach(e => D.push({ y: e.y, f: () => drawEnemy(e) }));
   G.projs.forEach(p => D.push({ y: p.y, f: () => drawProj(p) }));
   D.push({ y: G.P.y + 0.1, f: drawPlayer });
-  G.fx.forEach(f => { if (f.kind === 'ghost') D.push({ y: f.y - 0.1, f: () => drawSprite(f.img, sx(f.x), f.y, f.h * depthScale(f.y), f.face, f.artFace, { alpha: f.t / f.max * 0.5, tint: 'W', tintA: 0.6 }) }); });
+  G.fx.forEach(f => { if (f.kind === 'ghost') D.push({ y: f.y - 0.1, f: () => { const o = { alpha: f.t / f.max * 0.5, tint: 'W', tintA: 0.6 };
+    if (!(f.cid && drawHeroFrame(CHARS.find(c => c.id === f.cid), f.fr, sx(f.x), f.y, f.h * depthScale(f.y), f.face, o))) drawSprite(f.img, sx(f.x), f.y, f.h * depthScale(f.y), f.face, f.artFace, o); } }); });
   D.sort((a, b) => a.y - b.y).forEach(d => d.f());
   // fx
   G.fx.forEach(f => {
@@ -644,19 +708,78 @@ function drawSmear(x, y, h, face, sm, k) {
   for (let i = 0; i < 3; i++) { ctx.lineWidth = (big ? 14 : 9) - i * 4; ctx.beginPath(); ctx.arc(0, 0, R - i * 9, -1.1 + k * 0.6, 1.0 + k * 0.6); ctx.stroke(); }
   ctx.restore(); ctx.globalAlpha = 1;
 }
+// ---------- hero key-pose frames (generated per hero: idle, walk1, walk2, punch, kick, heavy, hit, down) ----------
+function drawHeroFrame(C, fname, x, y, h, face, o = {}) {
+  const hk = FRAME_HEROES[C.id], img = IMG['fr_' + hk], meta = FRAMES && FRAMES[hk]; if (!img || !meta) return false;
+  const fr = meta.f[fname] || meta.f.idle, sc = h / meta.T;
+  ctx.save(); ctx.translate(x + (o.ox || 0), y + (o.oy || 0)); ctx.rotate(o.rot || 0); ctx.scale(face * (o.sx || 1) * sc, (o.sy || 1) * sc);
+  const al = o.alpha != null ? o.alpha : 1; ctx.globalAlpha = al;
+  if (o.glow) { ctx.shadowColor = o.glow; ctx.shadowBlur = o.glowB || 22; }
+  ctx.drawImage(img, fr.x, fr.y, fr.w, fr.h, -fr.ax, -fr.h, fr.w, fr.h);
+  const tim = o.tint ? IMG['fr_' + hk + '_' + o.tint] : null;
+  if (tim) { ctx.shadowBlur = 0; ctx.globalAlpha = al * (o.tintA || 0.7); ctx.drawImage(tim, fr.x, fr.y, fr.w, fr.h, -fr.ax, -fr.h, fr.w, fr.h); }
+  ctx.restore(); return true;
+}
+const easeOutBack = k => { const c = 1.9; return 1 + (c + 1) * Math.pow(k - 1, 3) + c * Math.pow(k - 1, 2); };
+// picks the key pose + eased tween (anticipation squash, strike overshoot, follow-through, recovery) for the hero
+function heroPose(P) {
+  const t = P.t, st = P.st, f = P.face; let fr = 'idle', ox = 0, oy = 0, rot = 0, sxx = 1, syy = 1;
+  if (st === 'idle') { const b = Math.sin(G.t * 3.4); syy = 1 + b * 0.012; sxx = 1 - b * 0.006; }
+  else if (st === 'walk') { const w = (P.walkT || 0) * 1.15; fr = Math.floor(w) % 2 ? 'walk2' : 'walk1'; const ph = w % 1;
+    oy = -Math.sin(ph * Math.PI) * 5; syy = 1 + Math.sin(ph * Math.PI) * 0.015; rot = f * 0.02; }
+  else if (st === 'jump') { const up = P.vz > 0; fr = up ? 'walk2' : 'walk1'; syy = up ? 1.06 : 0.99; sxx = up ? 0.95 : 1.01; rot = f * (up ? -0.04 : 0.05); }
+  else if (st === 'jatk') { fr = 'kick'; rot = -f * 0.18; sxx = 1.04; }
+  else if (st === 'atk' || st === 'sp' || st === 'throw') {
+    const mv = P.mv || {}, d = P.atkDur || 0.3, wind = st === 'atk' ? (P.wind || 0.04) : 0.05;
+    const strikeF = st === 'sp' || st === 'throw' ? 'heavy' : (P.weapon ? 'heavy' : (mv.frame || 'punch'));
+    if (t < wind) { const k = ease(t / wind); fr = mv.heavy ? 'heavy' : 'idle'; ox = -f * 10 * k; sxx = 1 - 0.05 * k; syy = 1 + 0.03 * k; rot = -f * 0.05 * k;
+      if (mv.spin) { sxx = Math.max(0.15, Math.abs(Math.cos(k * Math.PI * 0.5))); } }
+    else {
+      const k2 = clamp((t - wind) / Math.max(0.05, d - wind), 0, 1);
+      if (mv.spin && k2 < 0.25) { const q = k2 / 0.25; fr = q < 0.5 ? 'walk2' : 'kick'; sxx = Math.max(0.2, Math.abs(Math.cos((q + 0.5) * Math.PI))); rot = -f * 0.1; }
+      else if (k2 < 0.78) { fr = strikeF; const q = clamp(k2 / 0.18, 0, 1); const pop = easeOutBack(q);
+        ox = f * (mv.heavy ? 26 : 14) * pop; sxx = 1 + 0.08 * (1 - q) + 0.02; syy = 1 - 0.04 * (1 - q);
+        if (fr === 'kick') { rot = -f * (mv.alt ? 0.12 : 0.04) * pop; oy = mv.alt ? 6 : 0; }
+        if (fr === 'punch' && mv.alt) { oy = 4; rot = f * 0.04; }
+        if (mv.idx === 2 || mv.fin) rot += f * 0.03; }
+      else { const q = (k2 - 0.78) / 0.22; fr = 'idle'; ox = f * 8 * (1 - ease(q)); syy = 1 - 0.03 * (1 - q); sxx = 1 + 0.03 * (1 - q); }
+    }
+  }
+  else if (st === 'charge') { const k = clamp(t / 0.9, 0, 1); fr = 'heavy'; ox = -f * 12 * ease(k) + rnd(-1.5, 1.5) * k; syy = 1 - 0.05 * k; sxx = 1 + 0.04 * k; rot = -f * 0.06 * k; }
+  else if (st === 'hurt') { const r = 1 - clamp(t / 0.28, 0, 1); fr = 'hit'; ox = rnd(-2, 2) * r - f * 6 * r; rot = -f * 0.04 * r; }
+  else if (st === 'down') { if (P.z > 2) { fr = 'hit'; rot = -f * clamp(t * 3, 0, 0.9); } else if (t > 0.75) { fr = 'hit'; syy = 0.8 + 0.2 * clamp((t - 0.75) / 0.15, 0, 1); } else { fr = 'down'; oy = 4; } }
+  else if (st === 'grab') { const kn = P.kneeT > 0 ? Math.sin((1 - P.kneeT / 0.2) * Math.PI) : 0; fr = kn > 0.3 ? 'kick' : 'punch'; ox = f * 4 * kn; sxx = 1 + kn * 0.03; }
+  else if (st === 'super') { fr = 'heavy'; syy = 1.04 + Math.sin(G.t * 30) * 0.02; }
+  if (P.landT > 0) { const k = P.landT / 0.14; syy *= 1 - 0.1 * k; sxx *= 1 + 0.08 * k; }
+  return { f: fr, ox, oy, rot, sx: sxx, sy: syy };
+}
 function drawPlayer() {
   const P = G.P, C = CH(), s = depthScale(P.y), h = C.h * s, x = sx(P.x), y = P.y - P.z;
   shadow(x, P.y, 44 * s, P.z);
-  const pose = poseFor(P, true);
+  const useFrames = FRAMES && IMG['fr_' + FRAME_HEROES[C.id]];
   const blink = P.inv > 0 && P.st !== 'super' && P.st !== 'sp' && Math.floor(G.t * 20) % 2 === 0 && P.st !== 'down';
-  const opts = Object.assign({}, pose, { alpha: blink ? 0.55 : 1 });
-  if (P.flashT > 0) { opts.tint = 'W'; opts.tintA = 0.75; }
-  if (P.st === 'super' || TM().meter >= 100) opts.glow = C.color;
-  if (P.st === 'down' && TM().down) { opts.tint = 'K'; opts.tintA = 0.35; }
   const striking = (P.st === 'atk' || P.st === 'sp' || P.st === 'throw') && P.t > (P.wind || 0);
-  if (striking && P.t < (P.atkDur || 0.3) * 0.7) [0.07, 0.035].forEach((dt, k) => { const gp = poseFor(Object.assign({}, P, { t: Math.max(0, P.t - dt) }), true);
-    drawSprite('hero_' + C.id, x, y, h, P.face, C.artFace, Object.assign(gp, { alpha: 0.16 + k * 0.1, tint: 'W', tintA: 0.55 })); });
-  drawSprite('hero_' + C.id, x, y, h, P.face, C.artFace, opts);
+  if (P.st === 'charge') { // charge aura: growing glow + sparks pulled inward
+    const k = clamp(P.t / 0.9, 0, 1), pulse = 0.5 + 0.5 * Math.sin(G.t * (P.chgFull ? 40 : 18));
+    ctx.save(); ctx.globalAlpha = 0.25 + 0.35 * k * pulse; const g = ctx.createRadialGradient(x, y - h * 0.5, 10, x, y - h * 0.5, h * (0.45 + 0.25 * k));
+    g.addColorStop(0, P.chgFull ? '#fff6c0' : C.color); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y - h * 0.5, h * (0.45 + 0.25 * k), 0, 7); ctx.fill(); ctx.restore();
+    if (Math.random() < 0.6) { const a = rnd(0, 7), r = rnd(70, 120); G.fx.push({ kind: 'spark', x: P.x + Math.cos(a) * r, y: P.y - h * 0.5 + Math.sin(a) * r, vx: -Math.cos(a) * 300, vy: -Math.sin(a) * 300, t: 0.25, max: 0.25, col: P.chgFull ? '#fff6c0' : C.color, r: 3, rot: 0 }); }
+  }
+  if (!useFrames) { // fallback: v2 two-part rig
+    const pose = poseFor(P, true); const opts = Object.assign({}, pose, { alpha: blink ? 0.55 : 1 });
+    if (P.flashT > 0) { opts.tint = 'W'; opts.tintA = 0.75; } if (P.st === 'super' || TM().meter >= 100) opts.glow = C.color;
+    drawSprite('hero_' + C.id, x, y, h, P.face, C.artFace, opts);
+  } else {
+    const ps = heroPose(P); const opts = Object.assign({}, ps, { alpha: blink ? 0.55 : 1 });
+    if (P.flashT > 0) { opts.tint = 'W'; opts.tintA = 0.75; }
+    if (P.st === 'super' || TM().meter >= 100) opts.glow = C.color;
+    if (P.st === 'charge') { opts.glow = P.chgFull ? '#fff6c0' : C.color; opts.glowB = 14 + 26 * clamp(P.t / 0.9, 0, 1); if (P.chgFull && Math.floor(G.t * 16) % 2) { opts.tint = 'W'; opts.tintA = 0.35; } }
+    if (P.st === 'down' && TM().down) { opts.tint = 'K'; opts.tintA = 0.35; }
+    // motion blur: trailing afterimages of the same key pose during the strike
+    if (striking && P.t < (P.atkDur || 0.3) * 0.55) [0.075, 0.04].forEach((dt, k) => { const gp = heroPose(Object.assign({}, P, { t: Math.max(0, P.t - dt) }));
+      drawHeroFrame(C, gp.f, x - P.face * (k ? 10 : 22), y, h, P.face, Object.assign(gp, { alpha: 0.18 + k * 0.12, tint: 'W', tintA: 0.55 })); });
+    drawHeroFrame(C, ps.f, x, y, h, P.face, opts);
+  }
   if ((striking || P.st === 'jatk') && P.smear) { const w0 = P.st === 'jatk' ? 0 : (P.wind || 0); drawSmear(x, y, h, P.face, P.st === 'jatk' ? { col: C.color, kick: 1 } : P.smear, clamp((P.t - w0) / Math.max(0.08, (P.atkDur || 0.3) * 0.8 - w0), 0, 1)); }
   if (P.weapon) { const wk = P.st === 'atk' ? atkCurve(clamp(P.t / (P.atkDur || 0.3), 0, 1), 0.15) : 0; ctx.save(); ctx.translate(x + P.face * (34 + wk * 14), y - h * 0.55); ctx.rotate(P.face * (P.st === 'atk' ? 1.1 * wk - 0.2 : -0.6)); ctx.fillStyle = P.weapon.type === 'pipe' ? '#9aa3ad' : 'rgba(70,170,90,0.95)';
     if (P.weapon.type === 'pipe') ctx.fillRect(-5, -70, 10, 76); else { ctx.fillRect(-8, -36, 16, 30); ctx.fillRect(-4, -48, 8, 14); } ctx.restore(); }
