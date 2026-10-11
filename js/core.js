@@ -2,7 +2,7 @@
 // ===== Ace-Af team – core: canvas, assets, input, audio =====
 let W = 960; const H = 540;           // logical height fixed; width follows the screen aspect (960..1280)
 const cv = document.getElementById('c');
-const ctx = cv.getContext('2d');
+let ctx = cv.getContext('2d');
 const IS_TOUCH = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
 let VIEW = { s: 1, ox: 0, oy: 0, dpr: 1 };
 const SAFE = { l: 0, r: 0, t: 0, b: 0 };
@@ -11,7 +11,7 @@ safeProbe.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;visibili
   'padding-top:env(safe-area-inset-top);padding-right:env(safe-area-inset-right);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left)';
 document.body.appendChild(safeProbe);
 function resize() {
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const dpr = Math.min(window.devicePixelRatio || 1, (typeof QUAL !== 'undefined' && QUAL.level === 'low') ? 1.5 : 2);
   const iw = window.innerWidth, ih = window.innerHeight;
   cv.style.width = iw + 'px'; cv.style.height = ih + 'px';
   cv.width = Math.round(iw * dpr); cv.height = Math.round(ih * dpr);
@@ -22,6 +22,12 @@ function resize() {
   W = Math.round(Math.min(1280, Math.max(960, H * aw / ah)));
   const s = Math.min(aw / W, ah / H);
   VIEW = { s, ox: SAFE.l + (aw - W * s) / 2, oy: SAFE.t + (ah - H * s) / 2, dpr };
+  if (typeof QUAL !== 'undefined') { // v4: offscreen world canvas + WebGL output canvas sized per quality tier
+    const lv = QUAL.level, wk = lv === 'high' ? 1 : lv === 'med' ? 0.72 : 0.6;
+    let wp = s * dpr * wk; wp = Math.min(wp, 2300 / W); QUAL.wdpr = wp;
+    wcv.width = Math.round(W * wp); wcv.height = Math.round(H * wp); if (QUAL.post) {
+      QUAL.gdpr = lv === 'high' ? dpr : Math.min(dpr, 1.5); glcv.style.width = iw + 'px'; glcv.style.height = ih + 'px'; glcv.width = Math.round(iw * QUAL.gdpr); glcv.height = Math.round(ih * QUAL.gdpr); }
+  }
   layoutTouch();
 }
 window.addEventListener('resize', resize);
@@ -38,6 +44,10 @@ const IMG_LIST = ['hero_AceAf', 'hero_Daniel', 'hero_Ravid', 'hero_Benjo', 'en_g
   'face_AceAf', 'face_Daniel', 'face_Ravid', 'face_Benjo', 'face_boss'];
 const FRAME_HEROES = { AceAf: 'ace', Daniel: 'daniel', Ravid: 'ravid', Benjo: 'benjo' }; let FRAMES = null;
 const JPG_LIST = ['bg_market', 'portrait_AceAf', 'portrait_Daniel', 'portrait_Ravid', 'portrait_Benjo'];
+// v4: enemy/boss frame atlases, props, portraits, map thumbnails (webp)
+const EF_LIST = ['grunt', 'knife', 'bruiser', 'bottle', 'parkour', 'butcher', 'shield', 'abdu', 'twin', 'twin2', 'boss'];
+const WEBP_LIST = EF_LIST.map(k => 'ef_' + k).concat(['crate', 'cart', 'portrait_uncle', 'portrait_grandma']);
+let EFRAMES = null;
 // versioned audio files (bump suffix when a file changes so phones don't keep stale copies)
 const AUD = {
   music_theme: 'music/theme_v1.mp3', music_stage: 'music/market_loop_v1.mp3', music_boss: 'music/market_boss_v1.mp3', music_sixty: 'music/sixty_v1.mp3',
@@ -51,6 +61,8 @@ const AUD = {
 ['ace', 'daniel', 'ravid', 'benjo'].forEach(h => ['punch', 'kick', 'heavy', 'hurt1', 'hurt2', 'ko'].forEach(k => AUD['vx_' + h + '_' + k] = 'sfx/vx_' + h + '_' + k + '_v1.mp3'));
 ['hit_light', 'hit_heavy', 'whoosh', 'chain', 'blade', 'bat', 'crate', 'bottle', 'coin', 'eat', 'super', 'tag', 'ko', 'stomp', 'go', 'hurt', 'charge', 'heavy', 'wall']
   .forEach(k => AUD['sfx_' + k] = 'sfx/' + k + '_v1.mp3');
+// v4 voice lines (eleven_v3, full nikud, Scribe-verified): uncle, narrator, mini-bosses, merchant phases, grandma
+['unc_2', 'unc_3', 'unc_4', 'unc_5', 'unc_end', 'nar_2', 'nar_3', 'nar_4', 'nar_5', 'nar_clear', 'abdu_1', 'twins_1', 'boss_p2', 'boss_p3', 'gma_1'].forEach(k => AUD[k] = 'vo/' + k + '_v4.mp3');
 let loadProgress = 0, loadDone = false;
 function loadImg(src) { return new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => { console.warn('img fail', src); res(null); }; i.src = src; }); }
 function tinted(img, color) {
@@ -59,12 +71,17 @@ function tinted(img, color) {
 }
 async function loadAll() {
   const jobs = [];
-  let total = IMG_LIST.length + JPG_LIST.length + Object.keys(AUD).length, n = 0;
+  let total = IMG_LIST.length + JPG_LIST.length + WEBP_LIST.length + 5 + Object.keys(AUD).length, n = 0;
   const tick = () => { n++; loadProgress = n / total; };
   IMG_LIST.forEach(k => jobs.push(loadImg('assets/img/' + k + '.png?v=' + (typeof ART_VER !== 'undefined' ? ART_VER : '1')).then(i => { IMG[k] = i; if (i && !k.startsWith('face')) { IMG[k + '_W'] = tinted(i, '#fff'); IMG[k + '_R'] = tinted(i, '#ff2a2a'); IMG[k + '_K'] = tinted(i, '#000'); } tick(); })));
   JPG_LIST.forEach(k => jobs.push(loadImg('assets/img/' + k + '.jpg?v=' + (typeof ART_VER !== 'undefined' ? ART_VER : '1')).then(i => { IMG[k] = i; tick(); })));
   Object.entries(AUD).forEach(([k, p]) => jobs.push(fetch('assets/audio/' + p).then(r => { if (!r.ok) throw new Error(p); return r.arrayBuffer(); })
     .then(b => AC.decodeAudioData(b)).then(buf => { SND[k] = buf; tick(); }).catch(e => { console.warn('audio fail', p, e && e.message); tick(); })));
+  WEBP_LIST.forEach(k => jobs.push(loadImg('assets/img/' + k + '.webp?v=4').then(i => { IMG[k] = i; tick(); })));
+  for (let i = 1; i <= 5; i++) jobs.push(loadImg('assets/stages/thumb_s' + i + '.webp?v=4').then(im => { IMG['thumb_s' + i] = im; tick(); }));
+  jobs.push(fetch('assets/img/eframes.json?v=4').then(r => r.json()).then(j => { EFRAMES = j; }).catch(e => console.warn('eframes.json', e)));
+  jobs.push(fetch('assets/stages/props.json?v=4').then(r => r.json()).then(j => { PROPS_META = j; }).catch(e => console.warn('props.json', e)));
+  jobs.push(fetch('assets/stages/lights.json?v=4').then(r => r.json()).then(j => { LIGHTS_META = j; }).catch(e => console.warn('lights.json', e)));
   jobs.push(fetch('assets/img/frames.json?v=3').then(r => r.json()).then(j => { FRAMES = j; }).catch(e => console.warn('frames.json', e)));
   Object.values(FRAME_HEROES).forEach(h => jobs.push(loadImg('assets/img/frames_' + h + '.png?v=3').then(i => { IMG['fr_' + h] = i; if (i) { IMG['fr_' + h + '_W'] = tinted(i, '#fff'); IMG['fr_' + h + '_K'] = tinted(i, '#000'); IMG['fr_' + h + '_C'] = null; } })));
   try { await document.fonts.load('800 40px Rubik', 'אבג TLV'); await document.fonts.load('500 20px Rubik', 'אבג'); } catch (e) { }
@@ -98,8 +115,9 @@ try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } ca
 // sounds may be scheduled while a resume() from this same gesture is still pending
 function audioOK() { return AC.state === 'running' || (performance.now() - lastUnlockTry < 1200 && AC.state !== 'closed'); }
 let curMusic = null;
-function playMusic(key, fade = 1.0, loop = true) {
-  if (curMusic && curMusic.key === key) return;
+function playMusic(key, fade = 1.0, loop = true, rate = 1, lpf = 0) {
+  rate = rate || 1; lpf = lpf || 0;
+  if (curMusic && curMusic.key === key && curMusic.rate === rate && curMusic.lpf === lpf) return;
   const old = curMusic;
   if (old) { old.g.gain.setTargetAtTime(0, AC.currentTime, fade / 3); setTimeout(() => { try { old.src.stop(); } catch (e) { } }, fade * 1500); }
   curMusic = null;
@@ -107,8 +125,10 @@ function playMusic(key, fade = 1.0, loop = true) {
   const src = AC.createBufferSource(); src.buffer = buf; src.loop = loop; AUDIO_STATS.music++;
   const lp = MUSIC_LOOPS[key]; if (lp && loop) { src.loopStart = lp[0]; src.loopEnd = lp[1]; }
   const g = AC.createGain(); g.gain.value = 0; g.gain.setTargetAtTime(1, AC.currentTime, fade / 3);
-  src.connect(g); g.connect(musicBus); src.start(0, lp && loop ? lp[0] : 0);
-  curMusic = { key, src, g };
+  src.playbackRate.value = rate;
+  if (lpf) { const f = AC.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = lpf; f.Q.value = 0.6; src.connect(f); f.connect(g); } else src.connect(g);
+  g.connect(musicBus); src.start(0, lp && loop ? lp[0] : 0);
+  curMusic = { key, src, g, rate, lpf };
 }
 function stopMusic(fade = 0.6) { if (curMusic) { const o = curMusic; o.g.gain.setTargetAtTime(0, AC.currentTime, fade / 3); setTimeout(() => { try { o.src.stop(); } catch (e) { } }, fade * 1500); curMusic = null; } }
 function stinger(k, vol = 0.9) {
