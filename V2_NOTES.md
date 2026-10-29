@@ -44,3 +44,8 @@
 - Tackle/hurt/walk still use the rig (no kick/hurt frames).
 - Known: in hold frames the lifted enemy is the person from the sheet, not the in-game enemy sprite (Ari QC: enemy face drift on grab).
 - Music: not included. Hook `window.BGM_SRC` reserved for Sol's BGM. Soft SFX unchanged.
+
+## V2.2.1 — music
+- Benjo Street OST wired: Track A `assets/audio/bgm_stage.mp3` (take1) loops during stages; Track B `assets/audio/bgm_boss.mp3` (take2) loops while a boss is alive.
+- `playBgm('stage'|'boss')` / `stopBgm()` / `syncBgm()` (per frame): boss alive → boss track, otherwise stage track; stops on game over. Starts in `startGame` (user click), play() rejections ignored. Synth SFX unchanged.
+- MP3 160 kbps stereo; source WAVs kept in `ost/` (not published).

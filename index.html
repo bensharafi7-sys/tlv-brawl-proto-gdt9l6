@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- V2.2 — discrete punch + grab/throw frame cycles, state machine, hitlag 2-4f (music slot ready, not included) -->
+<!-- V2.2.1 — music: Benjo Street OST (stage A / boss B BGM) + V2.2 punch/grab frame cycles, hitlag 2-4f -->
 <html lang="he" dir="rtl">
 <head>
 <meta charset="utf-8">
@@ -148,8 +148,14 @@ if(isTouch) touchEl.classList.remove('hidden');
 })();
 // ================= AUDIO (tiny synth SFX only, no music) =================
 let ac=null, sfxBus=null, noiseBuf=null;
-// BGM: set AUDIO.bgm src when Ben approves Sol track (intentionally silent until then — no placeholder music)
-const AUDIO={bgm:new Audio()}; AUDIO.bgm.loop=true; AUDIO.bgm.muted=true; AUDIO.bgm.volume=.5;
+// BGM: set AUDIO.bgm src when Ben approves Sol track (V2.2.1: wired below)
+// V2.2.1 BGM: Track A (stage) / Track B (boss), Benjo Street OST
+const BGM_VOL=.5;
+function mkBgm(src){const a=new Audio(src);a.loop=true;a.preload='auto';a.volume=BGM_VOL;return a;}
+const AUDIO={bgmStage:mkBgm('assets/audio/bgm_stage.mp3'),bgmBoss:mkBgm('assets/audio/bgm_boss.mp3'),cur:null};
+function playBgm(k){const a=k==='boss'?AUDIO.bgmBoss:AUDIO.bgmStage; if(AUDIO.cur===k&&!a.paused)return; stopBgm(); AUDIO.cur=k; a.muted=false;a.volume=BGM_VOL;a.currentTime=0; try{const p=a.play(); if(p&&p.catch)p.catch(()=>{});}catch(e){}}
+function stopBgm(){AUDIO.cur=null; for(const a of [AUDIO.bgmStage,AUDIO.bgmBoss]){try{a.pause();}catch(e){}}}
+function syncBgm(){ if(state!=='play'){ if(AUDIO.cur&&state==='title')stopBgm(); return; } const want=(bossRef&&!bossRef.dead)?'boss':'stage'; if(AUDIO.cur!==want)playBgm(want); }
 function audioInit(){ if(sfxBus) return; sfxBus=ac.createGain(); sfxBus.gain.value=.55;
  const comp=ac.createDynamicsCompressor(); comp.threshold.value=-18; comp.ratio.value=4; sfxBus.connect(comp); comp.connect(ac.destination);
  noiseBuf=ac.createBuffer(1,ac.sampleRate*.6,ac.sampleRate); const d=noiseBuf.getChannelData(0); let b=0; for(let i=0;i<d.length;i++){b=(b+.02*(Math.random()*2-1))/1.02; d[i]=b*3.5;} } // brown-ish noise = soft, no hiss
@@ -189,9 +195,9 @@ function spawnWave(i){ const S=STAGES[stageIdx]; arenaCam=clamp(Math.max(camX,pl
  const e={t:s.t,T,x,y:FLOOR_TOP+20+Math.random()*(FLOOR_BOT-FLOOR_TOP-30),vx:0,vy:0,z:0,vz:0,hp:T.hp,face:-1,state:'walk',st:0,atkCd:.6+Math.random(),hurtT:0,flash:0,dead:false,deadT:0,grabbed:false,wob:Math.random()*6,stepT:Math.random()*3,lean:0,mode:'punch'};
  enemies.push(e); if(T.boss){bossRef=e; banner={t:T.name+'!',life:2,boss:true}; sfx('boss'); shake=14;}}}
 function startGame(){ if(!ac){try{ac=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}} if(ac&&ac.state==='suspended')ac.resume();
- newGame();state='play';
+ newGame();state='play'; playBgm('stage');
  document.getElementById('title').classList.add('hidden');document.getElementById('over').classList.add('hidden');}
-function endGame(win){ if(state!=='play')return; state='over';
+function endGame(win){ if(state!=='play')return; state='over'; stopBgm();
  const bonus=win?Math.max(0,Math.round((900-time)*10))+lives*2000:0; score+=bonus;
  document.getElementById('overT').textContent=win?'הרחוב שלך, בנג׳ו!':'בנג׳ו נפל…';
  document.getElementById('overS').innerHTML=`ניקוד: <b>${score}</b><br>הגעת לשלב ${stageIdx+1}/4 — ${STAGES[stageIdx].name}<br>זמן: ${time.toFixed(0)} שנ׳ · קומבו הכי ארוך: ${bestCombo}`+(win?`<br>בונוס זמן+חיים: ${bonus}`:'');
@@ -594,6 +600,7 @@ function frame(now){
  } else if(state==='over'&&player){
   acc+=dt; while(acc>=STEP){ for(const q of particles){q.life-=STEP;} for(const e of enemies){if(e.dead)e.deadT+=STEP;} acc-=STEP; }
  }
+ syncBgm();
  render();
  requestAnimationFrame(frame);
 }
