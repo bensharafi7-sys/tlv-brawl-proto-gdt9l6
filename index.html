@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- V2.2.2 — grab HOLD clinch frame (Ari hold v2); music: Benjo Street OST (stage A / boss B BGM) + V2.2 punch/grab frame cycles, hitlag 2-4f -->
+<!-- V2.3 — kick + hurt Ari cycles; heavy = kick (X / בעיטה), hurt cycle on player hit. Prev: V2.2.2 grab HOLD clinch frame; music: Benjo Street OST (stage A / boss B BGM) + V2.2 punch/grab frame cycles, hitlag 2-4f -->
 <html lang="he" dir="rtl">
 <head>
 <meta charset="utf-8">
@@ -42,13 +42,13 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:1;
  <canvas id="c" width="960" height="540"></canvas>
  <div id="touch" class="hidden">
   <div id="joy"><div id="knob"></div></div>
-  <div id="btns"><div class="tb" id="bL">קל</div><div class="tb" id="bH">כבד</div><div class="tb" id="bT">תפיסה</div><div class="tb" id="bD">נגיחה</div><div class="tb" id="bR">זעם</div></div>
+  <div id="btns"><div class="tb" id="bL">קל</div><div class="tb" id="bH">בעיטה</div><div class="tb" id="bT">תפיסה</div><div class="tb" id="bD">נגיחה</div><div class="tb" id="bR">זעם</div></div>
  </div>
  <div id="fade"></div>
  <div id="title" class="screen">
   <h1>בנג׳ו ברחוב</h1>
   <p>גרסה 2 — 4 שלבים: הסמטה · המוסכים · החניון · הגשר. נקה את הרחוב עד הבוס האחרון.</p>
-  <p style="font-size:2.8cqh">מקלדת: חיצים — תנועה · Z — אגרוף קל · X — אגרוף כבד · C — תפיסה (ליד אויב/חפץ), לחיצה נוספת — זריקה · Shift (החזק ושחרר) או לחיצה כפולה על חץ — נגיחה · V — מצב זעם</p>
+  <p style="font-size:2.8cqh">מקלדת: חיצים — תנועה · Z — אגרוף קל · X — בעיטה · C — תפיסה (ליד אויב/חפץ), לחיצה נוספת — זריקה · Shift (החזק ושחרר) או לחיצה כפולה על חץ — נגיחה · V — מצב זעם</p>
   <button class="btn" id="startBtn">התחל</button>
  </div>
  <div id="over" class="screen hidden">
@@ -68,6 +68,7 @@ const ATK={
  light:{dmg:6, startup:.06, active:.07, recover:.12, reach:78, kb:160, freeze:.05, stun:.28, lunge:60},
  light3:{dmg:10,startup:.08, active:.08, recover:.26, reach:86, kb:420, freeze:.09, stun:.5, lunge:120, knock:true},
  heavy:{dmg:16, startup:.20, active:.09, recover:.32, reach:92, kb:520, freeze:.12, stun:.6, lunge:150, knock:true},
+ kick:{dmg:16, startup:.18, active:.10, recover:.34, reach:104, kb:540, freeze:.12, stun:.6, lunge:140, knock:true}, /* V2.3: f0 startup, f1 active, f2-3 recover */
  tackle:{dmg:14, startup:.03, active:.32, recover:.28, reach:70, kb:560, freeze:.1, stun:.7, lunge:0, knock:true, multi:true},
  throwHit:{dmg:14, kb:450, freeze:.1, stun:.6}
 };
@@ -81,6 +82,9 @@ const FR={punch:[[.5],[.47],[.61],[.5],[.48]].map((a,i)=>({img:null,n:'frames/pu
  grab:[[.32,1],[.66,1],[.54,1],[.27,.55],[.24,.5],[.32,.56]].map((a,i)=>({img:null,n:'frames/grab_0'+i+'.png',ax:a[0],clip:a[1],src:1}))};
 const FR_H={punch:519/1.0,grab:400};
 FR.hold=[{img:null,n:'frames/grab_hold.png',ax:.33,clip:1,src:-1}]; FR_H.hold=630; /* V2.2.2 */
+/* V2.3 kick + hurt (Ari sheets, face RIGHT in source => src:1); ax = stance-foot frac */
+FR.kick=[.42,.37,.38,.49].map((a,i)=>({img:null,n:'frames/kick_0'+i+'.png',ax:a,clip:1,src:1})); FR_H.kick=678;
+FR.hurt=[.5,.56,.42,.45].map((a,i)=>({img:null,n:'frames/hurt_0'+i+'.png',ax:a,clip:1,src:1})); FR_H.hurt=678;
 FR.grab[4].dy=.1; FR.grab[3].dy=.04;
 for(const k in FR) for(const f of FR[k]){const i=new Image();i.src='assets/'+f.n;f.img=i;}
 // BGM hook (V2.2): drop assets/audio/bgm.mp3 later (Sol) — game ships without it
@@ -232,7 +236,7 @@ function hitEnemy(e,a,dir){
  if(e.hp<=0){ e.dead=true; e.deadT=0; const pts=e.T.score*(1+Math.min(comboCount,10)*.2)|0; score+=pts; floatTxt(e.x,e.y-e.T.drawH-20,'+'+pts,'#7fff7f'); sfx('ko'); shake=e.T.boss?24:10; if(e.T.boss){freeze=.35;zoom=1.1;} }
 }
 function hurtPlayer(dmg,dir,big){ const p=player; if(p.inv>0||state!=='play')return;
- p.hp-=dmg*(p.rageT>0?.6:1); p.hurtT=big?.6:.32; p.inv=.7; p.vx=dir*(big?560:330); p.act=null; p.charge=0;
+ p.hp-=dmg*(p.rageT>0?.6:1); p.hurtT=big?.6:.32; p.hurtMax=p.hurtT; p.inv=.7; p.vx=dir*(big?560:330); p.act=null; p.charge=0;
  if(p.hold&&big){ if(p.hold.enemy){p.hold.enemy.grabbed=false;p.hold.enemy.state='knock';p.hold.enemy.z=10;} else{p.hold.z=0;} p.hold=null;}
  freeze=Math.max(freeze,.09); shake=big?16:9; burst(p.x,p.y-100,10,'#ff4040',220); sfx('hurt'); comboCount=0; addRage(RAGE.perHurt);
  if(p.hp<=0){ lives--; if(lives<=0){p.hp=0;endGame(false);} else {p.hp=P.hp;p.inv=2.5;floatTxt(p.x,p.y-200,'חיים -1','#f44');for(const e of enemies)if(!e.dead&&Math.abs(e.x-p.x)<250){e.vx=Math.sign(e.x-p.x)*500/e.T.mass;e.state='knock';e.vz=200;e.z=1;}}}}
@@ -288,7 +292,7 @@ function update(dt){
   if(!p.act||inWindow){ p.chain=inWindow?p.chain+1:0; const nm=p.chain>=2?'light3':'light';
    p.act={name:nm,d:ATK[nm],lock:true}; p.actT=0;p.hitDone=false;p.whiffed=false;p.chainOK=false; if(p.chain>=2)p.chain=-1;}
  }
- if(pressed.heavy&&!p.act&&p.hurtT<=0&&!p.hold){p.act={name:'heavy',d:ATK.heavy,lock:true};p.actT=0;p.hitDone=false;p.whiffed=false;p.chain=0;}
+ if(pressed.heavy&&!p.act&&p.hurtT<=0&&!p.hold){p.act={name:'heavy',d:ATK.kick,lock:true};p.actT=0;p.hitDone=false;p.whiffed=false;p.chain=0;}
  if(pressed.throw) p.grabBuf=.18; if(p.grabBuf>0) p.grabBuf-=dt;
  if(p.hold&&p.grabBuf>0&&p.liftT>.35){ p.grabBuf=0; p.act=null;
   {
@@ -462,9 +466,14 @@ function drawFist(x,y,face,len,r,col,alpha){ cx.save(); cx.globalAlpha=alpha; cx
  cx.restore(); }
 function playerFrame(p){
  if(p.hold){ const L=p.liftT||0; return p.hold.enemy?(L<.12?{set:'grab',i:0}:{set:'hold',i:0}):null; }
+ if(p.hurtT>0){ const r=1-p.hurtT/(p.hurtMax||.32); return {set:'hurt',i:r<.2?0:r<.45?1:r<.72?2:3}; } /* V2.3 hurt cycle */
  const a=p.act; if(!a) return null; const n=a.name, d=a.d, t=p.actT;
+ if(n==='heavy'){ /* V2.3 kick cycle */
+  if(t<d.startup) return {set:'kick',i:0,ph:'startup'};
+  if(t<d.startup+d.active) return {set:'kick',i:1,ph:'active'};
+  const r=(t-d.startup-d.active)/d.recover; return {set:'kick',i:r<.5?2:3,ph:'recovery'}; }
  if(n==='throw'){ return {set:'grab',i:t<.08?3:t<.2?4:5}; }
- if(n==='light'||n==='light3'||n==='heavy'){
+ if(n==='light'||n==='light3'){
   if(t<d.startup) return {set:'punch',i:t<d.startup*.5?0:1,ph:'startup'};
   if(t<d.startup+d.active) return {set:'punch',i:2,ph:'active'};
   const r=(t-d.startup-d.active)/d.recover; return {set:'punch',i:r<.5?3:4,ph:'recovery'}; }
@@ -482,7 +491,7 @@ function drawPlayer(){
  let a=1; if(p.inv>0&&Math.floor(p.inv*20)%2) a=.55;
  const fr=playerFrame(p); p._fr=fr; const usedFr=fr&&drawFrame(fr,sx,sy,p.face,a);
  if(!usedFr) drawBenjoAt(sx,sy,p.face,pose,a);
- if(p.hurtT>.15){ cx.save(); cx.globalCompositeOperation='lighter'; drawBenjoAt(sx,sy,p.face,pose,.7*Math.min(1,(p.hurtT-.15)*5)); cx.restore(); }
+ if(p.hurtT>.15&&!usedFr){ cx.save(); cx.globalCompositeOperation='lighter'; drawBenjoAt(sx,sy,p.face,pose,.7*Math.min(1,(p.hurtT-.15)*5)); cx.restore(); }
  // speed lines while charging/tackling
  if(p.charge>0||(p.act&&p.act.name==='tackle')){ cx.strokeStyle='rgba(255,255,255,.5)';cx.lineWidth=2; for(let i=0;i<6;i++){const yy=sy-30-Math.random()*160, l=40+Math.random()*80; cx.beginPath();cx.moveTo(sx-p.face*(40+Math.random()*30),yy);cx.lineTo(sx-p.face*(40+l),yy);cx.stroke();} }
  if(!usedFr&&p.act&&p.act.name!=='throw'&&p.act.name!=='tackle'&&pose.fist>0){
