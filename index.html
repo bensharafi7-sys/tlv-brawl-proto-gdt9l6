@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- V2.1 — procedural combat motion pass, arrow fix, grab hints, soft SFX -->
 <html lang="he" dir="rtl">
 <head>
 <meta charset="utf-8">
@@ -41,13 +42,13 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:1;
  <canvas id="c" width="960" height="540"></canvas>
  <div id="touch" class="hidden">
   <div id="joy"><div id="knob"></div></div>
-  <div id="btns"><div class="tb" id="bL">קל</div><div class="tb" id="bH">כבד</div><div class="tb" id="bT">זריקה</div><div class="tb" id="bD">נגיחה</div><div class="tb" id="bR">זעם</div></div>
+  <div id="btns"><div class="tb" id="bL">קל</div><div class="tb" id="bH">כבד</div><div class="tb" id="bT">תפיסה</div><div class="tb" id="bD">נגיחה</div><div class="tb" id="bR">זעם</div></div>
  </div>
  <div id="fade"></div>
  <div id="title" class="screen">
   <h1>בנג׳ו ברחוב</h1>
   <p>גרסה 2 — 4 שלבים: הסמטה · המוסכים · החניון · הגשר. נקה את הרחוב עד הבוס האחרון.</p>
-  <p style="font-size:2.8cqh">מקלדת: חיצים — תנועה · Z — אגרוף קל · X — אגרוף כבד · C — תפיסה/זריקה · Shift (החזק ושחרר) או לחיצה כפולה על חץ — נגיחה · V — מצב זעם</p>
+  <p style="font-size:2.8cqh">מקלדת: חיצים — תנועה · Z — אגרוף קל · X — אגרוף כבד · C — תפיסה (ליד אויב/חפץ), לחיצה נוספת — זריקה · Shift (החזק ושחרר) או לחיצה כפולה על חץ — נגיחה · V — מצב זעם</p>
   <button class="btn" id="startBtn">התחל</button>
  </div>
  <div id="over" class="screen hidden">
@@ -100,7 +101,7 @@ const STAGES=[
 // enemy archetypes. drawH=on-screen height; srcFace = which way the PNG figure faces (1=right,-1=left)
 const ETYPES={
  thin:{name:'רזה',img:'en_thin.png',hp:30,spd:200,w:54,drawH:190,dmg:6,cd:.7,mass:.75,reach:62,wind:.28,score:150,srcFace:-1},
- heavy:{name:'כבד',img:'en_heavy.png',hp:95,spd:80,w:84,drawH:205,dmg:15,cd:1.5,mass:2.0,reach:74,wind:.5,score:400,srcFace:1,noGrab:true},
+ heavy:{name:'כבד',img:'en_heavy.png',hp:95,spd:80,w:84,drawH:205,dmg:15,cd:1.5,mass:2.0,reach:74,wind:.5,score:400,srcFace:1},
  bossA:{name:'בוס הסמטה',img:'boss_alley.png',hp:260,spd:120,w:70,drawH:225,dmg:16,cd:1.2,mass:2.4,reach:96,wind:.6,score:2500,srcFace:1,noGrab:true,boss:true,rush:true},
  bossB:{name:'בוס הגשר',img:'boss_bridge.png',hp:420,spd:135,w:76,drawH:235,dmg:20,cd:1.0,mass:2.8,reach:104,wind:.55,score:6000,srcFace:-1,noGrab:true,boss:true,rush:true,slam:true}
 };
@@ -138,13 +139,31 @@ if(isTouch) touchEl.classList.remove('hidden');
  document.addEventListener('contextmenu',e=>e.preventDefault());
 })();
 // ================= AUDIO (tiny synth SFX only, no music) =================
-let ac=null;
-function sfx(type){ if(!ac) return; const t=ac.currentTime,o=ac.createOscillator(),g=ac.createGain(),n=ac.createBiquadFilter();
- o.connect(n);n.connect(g);g.connect(ac.destination);
- const s={light:[180,60,.08,.25],heavy:[110,35,.16,.4],whiff:[600,300,.05,.05],ko:[90,30,.35,.45],hurt:[220,80,.12,.3],throw:[140,40,.2,.35],rage:[70,300,.5,.35],dash:[300,80,.25,.25],boss:[55,40,.6,.4]}[type]||[200,100,.1,.2];
- o.type=type==='whiff'?'triangle':(type==='rage'?'sawtooth':'square');n.type='lowpass';n.frequency.value=type==='whiff'?2000:900;
- o.frequency.setValueAtTime(s[0],t);o.frequency.exponentialRampToValueAtTime(s[1],t+s[2]);
- g.gain.setValueAtTime(s[3],t);g.gain.exponentialRampToValueAtTime(.001,t+s[2]+.05);o.start(t);o.stop(t+s[2]+.06);}
+let ac=null, sfxBus=null, noiseBuf=null;
+// BGM: set AUDIO.bgm src when Ben approves Sol track (intentionally silent until then — no placeholder music)
+const AUDIO={bgm:new Audio()}; AUDIO.bgm.loop=true; AUDIO.bgm.muted=true; AUDIO.bgm.volume=.5;
+function audioInit(){ if(sfxBus) return; sfxBus=ac.createGain(); sfxBus.gain.value=.55;
+ const comp=ac.createDynamicsCompressor(); comp.threshold.value=-18; comp.ratio.value=4; sfxBus.connect(comp); comp.connect(ac.destination);
+ noiseBuf=ac.createBuffer(1,ac.sampleRate*.6,ac.sampleRate); const d=noiseBuf.getChannelData(0); let b=0; for(let i=0;i<d.length;i++){b=(b+.02*(Math.random()*2-1))/1.02; d[i]=b*3.5;} } // brown-ish noise = soft, no hiss
+function nz(t,dur,f0,f1,q,vol,type){ const s=ac.createBufferSource(),f=ac.createBiquadFilter(),g=ac.createGain(); s.buffer=noiseBuf;
+ f.type=type||'lowpass'; f.Q.value=q; f.frequency.setValueAtTime(f0,t); f.frequency.exponentialRampToValueAtTime(f1,t+dur);
+ g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(vol,t+Math.min(.012,dur*.3)); g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+ s.connect(f);f.connect(g);g.connect(sfxBus); s.start(t); s.stop(t+dur+.02); }
+function thump(t,dur,f0,f1,vol){ const o=ac.createOscillator(),g=ac.createGain(); o.type='sine'; o.frequency.setValueAtTime(f0,t); o.frequency.exponentialRampToValueAtTime(f1,t+dur);
+ g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(vol,t+.006); g.gain.exponentialRampToValueAtTime(.0001,t+dur); o.connect(g);g.connect(sfxBus); o.start(t); o.stop(t+dur+.02); }
+function sfx(type){ if(!ac) return; audioInit(); const t=ac.currentTime+.005;
+ switch(type){
+  case 'light': nz(t,.06,1400,300,.7,.22); thump(t,.07,140,70,.18); break;          // soft tap
+  case 'heavy': nz(t,.12,900,120,.8,.28); thump(t,.16,95,42,.32); break;            // deeper thud
+  case 'hurt':  nz(t,.1,1100,220,.9,.2); thump(t,.1,120,60,.16); break;
+  case 'ko':    nz(t,.3,600,60,.7,.28); thump(t,.34,80,30,.36); break;              // deep boom
+  case 'whiff': nz(t,.11,500,1600,1.2,.06,'bandpass'); break;                       // airy, quiet
+  case 'throw': nz(t,.22,300,1200,1.4,.09,'bandpass'); thump(t+.02,.12,90,50,.08); break;
+  case 'dash':  nz(t,.2,1200,300,1.2,.08,'bandpass'); break;
+  case 'rage':  nz(t,.6,150,1400,2,.12,'bandpass'); thump(t,.5,55,110,.14); break;   // swell
+  case 'boss':  thump(t,.5,60,35,.3); nz(t,.4,400,60,.7,.15); break;
+  default: nz(t,.08,800,200,.8,.1);
+ }}
 // ================= GAME STATE =================
 let state='title', player, enemies, props, particles, floats, ghosts, camX, freeze, shake, zoom, score, time, wave, comboCount, comboTimer, bestCombo, stageIdx, WORLD_W, stageT, banner, lives, bossRef, trans;
 function newPlayer(){return {x:180,y:470,vx:0,vy:0,face:1,hp:P.hp,act:null,actT:0,hitDone:false,chain:0,hurtT:0,inv:1,hold:null,lean:0,bob:0,stepT:0,twist:0,stretch:1,rage:0,rageT:0,charge:0,hitSet:null};}
@@ -177,6 +196,10 @@ function approach(v,t,d){return v<t?Math.min(v+d,t):Math.max(v-d,t);}
 function burst(x,y,n,col,spd){for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,s=spd*(.3+Math.random());particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-80,life:.3+Math.random()*.3,col,r:2+Math.random()*3});}}
 function floatTxt(x,y,t,col){floats.push({x,y,t,col,life:.8});}
 function addRage(v){const p=player; if(p.rageT>0)return; p.rage=Math.min(100,p.rage+v); if(p.rage>=100&&!p.rageReadyShown){p.rageReadyShown=1;floatTxt(p.x,p.y-210,'זעם מוכן! (V)','#f6f');}}
+function canGrab(e,p){ if(e.dead||e.grabbed||e.T.noGrab||e.z>20) return false; const dx=(e.x-p.x)*p.face;
+ if(!(dx>-25&&dx<105+e.T.w*.3&&Math.abs(e.y-p.y)<40)) return false;
+ return e.t==='thin'||e.state==='hurt'||e.hurtT>0||e.hp<e.T.hp*.6; }
+function grabTarget(p){ let best=null,bd=1e9; for(const e of enemies){ if(!canGrab(e,p)) continue; const d=Math.abs(e.x-p.x)+Math.abs(e.y-p.y)*2; if(d<bd){bd=d;best=e;} } return best; }
 function hitEnemy(e,a,dir){
  if(e.dead) return;
  const rg=player.rageT>0?RAGE.dmg:1, dmg=a.dmg*rg;
@@ -226,11 +249,12 @@ function update(dt){
  if(canAct&&ix!==0&&!p.act&&!charging) p.face=ix>0?1:-1;
  // ---- actions ----
  if(p.act){ p.actT+=dt*rs; const a=p.act;
-  if(a.name==='tackle'){ p.vx=approach(p.vx,0,1500*dt); if(p.actT<a.d.startup+a.d.active&&Math.random()<.5) ghosts.push({x:p.x,y:p.y,face:p.face,life:.18,lean:p.lean,st:p.stretch});
+  if(a.name==='tackle'){ p.vx=approach(p.vx,0,1500*dt); if(p.actT<a.d.startup+a.d.active&&Math.random()<.5) ghosts.push({x:p.x,y:p.y,face:p.face,life:.18,pose:playerPose(p)});
    for(const e of enemies){ if(e.dead||e.grabbed||p.hitSet.has(e)||p.actT>a.d.startup+a.d.active) continue; const dx=(e.x-p.x)*p.face;
     if(dx>-10&&dx<a.d.reach+e.T.w/2&&Math.abs(e.y-p.y)<38&&e.z<60){ p.hitSet.add(e); hitEnemy(e,{...a.d,dmg:a.d.dmg*(.6+a.pw*.7)},p.face); p.vx*=.75; } } }
   else {
   if(p.actT<a.d.startup+a.d.active && a.d.lunge) p.vx=approach(p.vx,p.face*a.d.lunge*2.2*rs,3000*dt);
+  if(p.actT>=a.d.startup&&p.actT<a.d.startup+a.d.active+.03&&Math.random()<.45) ghosts.push({x:p.x-p.face*8,y:p.y,face:p.face,life:.14,pose:playerPose(p)});
   if(!p.hitDone&&p.actT>=a.d.startup&&p.actT<a.d.startup+a.d.active){
    let hit=false;
    for(const e of enemies){ if(e.dead||e.grabbed) continue; const dx=(e.x-p.x)*p.face;
@@ -250,14 +274,13 @@ function update(dt){
  if(pressed.throw&&!p.act&&p.hurtT<=0){
   if(p.hold){
    const o=p.hold; p.hold=null; o.flying=true;
-   if(o.enemy){const e=o.enemy; e.grabbed=false; e.state='thrown'; e.vx=p.face*620; e.vz=220; e.z=60; e.x=p.x+p.face*40; e.y=p.y;}
+   if(o.enemy){const e=o.enemy; e.grabbed=false; e.state='thrown'; e.vx=p.face*620/Math.sqrt(e.T.mass/.75); e.vz=220; e.z=60; e.x=p.x+p.face*40; e.y=p.y;}
    else {o.vx=p.face*720; o.vz=120; o.z=70; o.x=p.x+p.face*30; o.y=p.y;}
    sfx('throw'); p.act={name:'throw',d:{startup:0,active:0,recover:.3},lock:true};p.actT=0;p.hitDone=true; p.vx-=p.face*60;
   } else {
    let best=null,bd=1e9;
    for(const o of props){ if(o.flying||o.gone) continue; const d=Math.abs(o.x-p.x)+Math.abs(o.y-p.y)*2; if(d<90&&d<bd){bd=d;best=o;} }
-   for(const e of enemies){ if(e.dead||e.T.noGrab) continue; const dx=(e.x-p.x)*p.face; const d=Math.abs(e.x-p.x)+Math.abs(e.y-p.y)*2;
-    if(dx>-5&&dx<80&&Math.abs(e.y-p.y)<30&&(e.state==='hurt'||e.hurtT>0||e.hp<e.T.hp*.5)&&d<bd){bd=d;best={enemy:e};} }
+   const ge=grabTarget(p); if(ge){best={enemy:ge};}
    if(best){ if(best.enemy){best.enemy.grabbed=true;best.enemy.state='grabbed';} p.hold=best; p.liftT=0; p.vx*=.3; floatTxt(p.x,p.y-180,best.enemy?'תפיסה!':'הרמה','#fff'); }
    else { sfx('whiff'); }
   }
@@ -270,9 +293,9 @@ function update(dt){
  if(Math.abs(p.vx)>20||Math.abs(p.vy)>20){p.stepT+=dt*(Math.abs(p.vx)+Math.abs(p.vy)*.8)/85;}
  p.bob=Math.abs(Math.sin(p.stepT*Math.PI))*Math.min(1,(Math.abs(p.vx)+Math.abs(p.vy))/P.maxSpd);
  p.stretch+=(1-p.stretch)*Math.min(1,dt*12);
- if(p.hold) p.liftT=Math.min(1,(p.liftT||0)+dt*4);
+ if(p.hold) p.liftT=Math.min(1,(p.liftT||0)+dt*(p.hold.enemy?4/p.hold.enemy.T.mass:4));
  if(p.inv>0)p.inv-=dt;
- if((Math.abs(p.vx)>380||p.rageT>0&&Math.abs(p.vx)>150)&&Math.random()<.35) ghosts.push({x:p.x,y:p.y,face:p.face,life:.16,lean:p.lean,st:p.stretch});
+ if((Math.abs(p.vx)>380||p.rageT>0&&Math.abs(p.vx)>150)&&Math.random()<.35) ghosts.push({x:p.x,y:p.y,face:p.face,life:.16,pose:playerPose(p)});
  if(p.hold){ const L=p.liftT; if(p.hold.enemy){const e=p.hold.enemy; e.x=p.x+p.face*(36-10*L); e.y=p.y+1; e.z=20+70*L;} else {p.hold.x=p.x+p.face*10;p.hold.y=p.y;p.hold.z=60+90*L;} }
  // ---- enemies ----
  for(const e of enemies){
@@ -364,73 +387,94 @@ function drawBg(){
 function shadow(x,y,w,a){cx.fillStyle=`rgba(0,0,0,${a||.45})`;cx.beginPath();cx.ellipse(x,y,w,w*.22,0,0,Math.PI*2);cx.fill();}
 // Strip-deformation rig: draws one image as horizontal slices, each slice offset by a function of height.
 // Gives continuous torso-lean / hip-sway / stride wobble instead of swapping static frames.
-const STRIPS=14;
+const STRIPS=22;
+// opt.reach = forward shove of UPPER strips only (shoulders/arms) — feet stay planted; opt.crouch = lower-body squash
 function rigDraw(img,w,h,opt){ // drawn in local space, feet at (0,0), figure facing +x after flip
- const {torso=0,hip=0,stride=0,sq=1,flip=1}=opt;
+ const {torso=0,hip=0,stride=0,sq=1,flip=1,reach=0,crouch=0}=opt;
  cx.save(); cx.scale(flip,1); cx.scale(1/sq,sq);
- const sh=img.height/STRIPS, dh=h/STRIPS;
+ const sh=img.height/STRIPS; let y=-h;
+ const hh=h*(1-crouch*.08);
  for(let i=0;i<STRIPS;i++){ const v=i/(STRIPS-1); // 0=top(head) 1=feet
-  const up=1-v; // upper body follows torso, lower legs show stride wobble
-  const off=torso*up*up*flip + hip*Math.sin(v*Math.PI)*flip + stride*Math.max(0,v-.55)*Math.sin(v*9)*flip;
-  cx.drawImage(img,0,i*sh,img.width,sh+1,-w/2+off*flip,-h+i*dh,w,dh+1); }
+  const up=1-v, arm=Math.max(0,1-Math.abs(v-.32)/.24); // arm band peaks at shoulder height
+  const legs=Math.max(0,v-.5)*2;
+  const off=torso*up*up + hip*Math.sin(v*Math.PI) + stride*legs*Math.sin(v*7+.6) + reach*(arm*1.0+up*up*.45);
+  const dh=hh/STRIPS*(v>.55?1-crouch*.25:1+crouch*.06);
+  cx.drawImage(img,0,i*sh,img.width,sh+1,-w/2+off*flip,-hh+(y+h),w*(1+arm*Math.abs(reach)*.004),dh+1); y+=dh; }
  cx.restore(); }
 const PH=210;
+const ease={inQ:k=>k*k*k, outB:k=>{const c=2.2;k-=1;return 1+(c+1)*k*k*k+c*k*k;}, out:k=>1-(1-k)*(1-k)};
 function playerPose(p){
- let torso=0,hip=0,sq=1,dx=0,rot=0,lift=0;
- const f=p.face, speed=Math.abs(p.vx)+Math.abs(p.vy);
- torso=p.lean*f*180 + Math.sin(p.stepT*Math.PI*2)*3*Math.min(1,speed/P.maxSpd);
- hip=Math.sin(p.stepT*Math.PI)*4*Math.min(1,speed/P.maxSpd);
- sq=1-p.bob*.025+Math.sin(time*2.2)*.008; // idle breathing
- if(p.charge>0){ torso+=18*p.charge/CHARGE_MAX; sq=.95; }
- if(p.act){const a=p.act.d,t=p.actT,n=p.act.name, big=n==='heavy'||n==='light3';
-  if(n==='tackle'){ torso=34; sq=.9; rot=.18; dx=10; }
-  else if(n==='throw'){ const k=clamp(t/.15,0,1); torso=-20+40*k; dx=14*k; }
-  else if(t<a.startup){const k=t/a.startup; const e=k*k; dx=-14*e*(big?1.5:1); torso=-16*e*(big?1.6:1); sq=1+.04*e;}
-  else if(t<a.startup+a.active){dx=big?30:18; torso=big?26:16; sq=.95; rot=big?.06:.03;}
-  else {const k=(t-a.startup-a.active)/a.recover; const e=1-(1-k)*(1-k); dx=(big?30:18)*(1-e); torso=(big?26:16)*(1-e);}
+ let torso=0,hip=0,sq=1,dx=0,rot=0,lift=0,reach=0,crouch=0,fist=0;
+ const f=p.face, speed=Math.abs(p.vx)+Math.abs(p.vy), m=Math.min(1,speed/P.maxSpd);
+ const st=Math.sin(p.stepT*Math.PI*2);
+ torso=p.lean*f*220 + st*6*m;
+ hip=Math.sin(p.stepT*Math.PI)*9*m;
+ crouch=Math.abs(Math.cos(p.stepT*Math.PI))**6*.5*m;      // foot-plant squash on each step
+ sq=1-p.bob*.05+Math.sin(time*2.2)*.01;
+ let bobY=-p.bob*7;
+ if(p.charge>0){ torso+=26*p.charge/CHARGE_MAX; sq=.92; crouch=.6; }
+ if(p.act){const a=p.act.d,t=p.actT,n=p.act.name, big=n==='heavy'||n==='light3', B=big?1.7:1;
+  if(n==='tackle'){ torso=44; sq=.86; rot=.22; dx=14; reach=20; crouch=.5; }
+  else if(n==='throw'){ const k=clamp(t/.15,0,1); torso=-30+70*ease.outB(k); reach=30*k; dx=16*k; }
+  else if(t<a.startup){const k=ease.inQ(t/a.startup); dx=-16*k*B; torso=-24*k*B; reach=-18*k*B; sq=1+.07*k*B; crouch=.9*k; rot=-.04*k*B;}
+  else if(t<a.startup+a.active){const k=ease.outB(Math.min(1,(t-a.startup)/(a.active*.6))); dx=(big?26:14)*k; torso=(big?30:18)*k; reach=(big?62:42)*k; sq=1-.08*k; crouch=.5; rot=(big?.09:.04)*k; fist=k;}
+  else {const k=ease.out((t-a.startup-a.active)/a.recover); dx=(big?26:14)*(1-k); torso=(big?30:18)*(1-k); reach=(big?62:42)*(1-k)*(1-k); crouch=.5*(1-k); fist=Math.max(0,1-k*3);}
  }
- if(p.hold){ lift=p.liftT||0; torso-=10*lift; sq*=1-.04*lift; }
- if(p.hurtT>0){dx=-12;torso=-22;rot=-.08;}
- return {torso,hip,sq,dx,rot,stride:Math.sin(p.stepT*Math.PI*2)*6*Math.min(1,speed/P.maxSpd)};
+ if(p.hold){ lift=p.liftT||0; torso-=14*lift; sq*=1-.06*lift; crouch=Math.max(crouch,.5*(1-lift)); reach=8*lift; }
+ if(p.hurtT>0){const k=Math.min(1,p.hurtT/.3); dx=-18*k;torso=-34*k;reach=-14*k;rot=-.16*k; sq=1+.05*k;}
+ return {torso,hip,sq,dx,rot,reach,crouch,fist,bobY,stride:st*14*m};
 }
 function drawBenjoAt(x,y,face,pose,alpha,tint){
  const img=IMG['benjo.png']; if(!img.width) return;
  const h=PH, w=img.width*h/img.height;
- cx.save(); cx.translate(x+pose.dx*face,y); cx.rotate(pose.rot*face); cx.globalAlpha=alpha;
- rigDraw(img,w,h,{torso:pose.torso,hip:pose.hip,stride:pose.stride,sq:pose.sq,flip:-face}); // source faces LEFT
- if(tint){cx.globalCompositeOperation='source-atop';}
+ cx.save(); cx.translate(x+pose.dx*face,y+(pose.bobY||0)); cx.rotate(pose.rot*face); cx.globalAlpha=alpha;
+ rigDraw(img,w,h,{torso:pose.torso,hip:pose.hip,stride:pose.stride,sq:pose.sq,reach:pose.reach,crouch:pose.crouch,flip:-face}); // source faces LEFT
  cx.restore();
 }
+// drawn forearm + fist extension during active frames (procedural — stands in until real sprite frames)
+function drawFist(x,y,face,len,r,col,alpha){ cx.save(); cx.globalAlpha=alpha; cx.translate(x,y); cx.scale(face,1);
+ cx.fillStyle='rgba(255,255,255,.35)'; cx.beginPath(); cx.moveTo(-len*.2,-r*1.3); cx.lineTo(len,-r*.6); cx.lineTo(len,r*.6); cx.lineTo(-len*.2,r*1.3); cx.closePath(); cx.fill(); // motion smear
+ cx.fillStyle='#b07850'; cx.strokeStyle='#2a1508'; cx.lineWidth=3; cx.beginPath(); cx.moveTo(0,-r*.55); cx.lineTo(len-r,-r*.65); cx.lineTo(len-r,r*.65); cx.lineTo(0,r*.55); cx.closePath(); cx.fill(); cx.stroke(); // forearm
+ cx.fillStyle='#c98a5c'; cx.beginPath(); cx.arc(len-r*.4,0,r,0,Math.PI*2); cx.fill(); cx.stroke(); // fist
+ cx.strokeStyle=col; cx.lineWidth=4; for(let i=-1;i<=1;i++){cx.beginPath();cx.moveTo(len+r*.9,i*r*.9);cx.lineTo(len+r*1.9+Math.abs(i)*-4,i*r*1.6);cx.stroke();} // impact spikes
+ cx.restore(); }
 function drawPlayer(){
  const p=player, sx=p.x-camX, sy=p.y;
  shadow(sx,sy,62);
  const pose=playerPose(p);
- for(const g of ghosts) if(!g.e){ cx.save(); cx.globalCompositeOperation='lighter'; drawBenjoAt(g.x-camX,g.y,g.face,pose,g.life*2.2*.5); cx.restore(); }
+ for(const g of ghosts) if(!g.e){ cx.save(); cx.globalCompositeOperation='lighter'; drawBenjoAt(g.x-camX,g.y,g.face,g.pose||pose,g.life*2.2*.5); cx.restore(); }
  if(p.rageT>0){ const r=60+Math.sin(time*20)*10; const gr=cx.createRadialGradient(sx,sy-100,10,sx,sy-100,r*2); gr.addColorStop(0,'rgba(255,40,200,.45)');gr.addColorStop(1,'rgba(255,0,120,0)');cx.fillStyle=gr;cx.fillRect(sx-r*2,sy-100-r*2,r*4,r*4); }
  let a=1; if(p.inv>0&&Math.floor(p.inv*20)%2) a=.55;
  drawBenjoAt(sx,sy,p.face,pose,a);
+ if(p.hurtT>.15){ cx.save(); cx.globalCompositeOperation='lighter'; drawBenjoAt(sx,sy,p.face,pose,.7*Math.min(1,(p.hurtT-.15)*5)); cx.restore(); }
  // speed lines while charging/tackling
  if(p.charge>0||(p.act&&p.act.name==='tackle')){ cx.strokeStyle='rgba(255,255,255,.5)';cx.lineWidth=2; for(let i=0;i<6;i++){const yy=sy-30-Math.random()*160, l=40+Math.random()*80; cx.beginPath();cx.moveTo(sx-p.face*(40+Math.random()*30),yy);cx.lineTo(sx-p.face*(40+l),yy);cx.stroke();} }
- if(p.act&&p.act.name!=='throw'&&p.act.name!=='tackle'&&p.actT>=p.act.d.startup&&p.actT<p.act.d.startup+p.act.d.active+.04){
-  const n=p.act.name, r=n==='heavy'||n==='light3'?24:14, fx=sx+p.face*(70+pose.dx), fy=sy-PH*.78;
-  cx.save();cx.globalAlpha=.85; cx.fillStyle=p.rageT>0?'#ff60ff':(n==='light'?'#bfe3ff':'#ffd040');
-  cx.beginPath(); cx.moveTo(fx-p.face*r*2.6,fy); cx.lineTo(fx+p.face*r,fy-r*.7); cx.lineTo(fx+p.face*r,fy+r*.7); cx.closePath(); cx.fill(); cx.restore();
+ if(p.act&&p.act.name!=='throw'&&p.act.name!=='tackle'&&pose.fist>0){
+  const n=p.act.name, big=n==='heavy'||n==='light3', fx=sx+p.face*(10+pose.dx+pose.reach*.5), fy=sy-PH*.70+(pose.bobY||0);
+  drawFist(fx,fy,p.face,(big?96:74)*(.4+.6*pose.fist),big?15:11,p.rageT>0?'#ff60ff':(big?'#ffd040':'#ffffff'),Math.min(1,pose.fist*1.3));
  }
+ // grab / throw hints
+ if(state==='play'&&!p.act&&p.hurtT<=0){ let ht=null;
+  if(p.hold) ht=isTouch?'זרוק! (תפיסה)':'C זרוק!';
+  else if(grabTarget(p)) ht=isTouch?'תפיסה':'C תפיסה';
+  if(ht){ cx.save(); cx.direction='rtl'; cx.textAlign='center'; cx.font='bold 24px Arial'; const yy=sy-PH-34+Math.sin(time*8)*4;
+   cx.lineWidth=5; cx.strokeStyle='#000'; cx.strokeText(ht,sx,yy); cx.fillStyle=p.hold?'#ff8040':'#ffe060'; cx.fillText(ht,sx,yy); cx.restore(); } }
  if(p.charge>0){ cx.fillStyle='#000a';cx.fillRect(sx-30,sy-PH-24,60,7);cx.fillStyle='#3fe0a0';cx.fillRect(sx-30,sy-PH-24,60*p.charge/CHARGE_MAX,7); }
 }
-function enemyPose(e){ const T=e.T, speed=Math.abs(e.vx)+Math.abs(e.vy), m=Math.min(1,speed/T.spd);
- let torso=e.lean*e.face*160+Math.sin(e.stepT*Math.PI*2)*3*m, hip=Math.sin(e.stepT*Math.PI)*5*m*Math.sqrt(T.mass), sq=1-Math.abs(Math.sin(e.stepT*Math.PI))*.03*m*T.mass+Math.sin(time*2+e.wob)*.01, rot=0, dx=0;
- if(e.state==='wind'||e.state==='rushwind'){ const k=Math.min(1,e.st/(T.wind||.4)); torso=-22*k*(e.mode==='slam'?1.6:1); sq=1+.05*k; dx=-8*k; if(e.mode==='slam'){sq=1+.1*k;} }
- if(e.state==='strike'){ torso=e.mode==='slam'?40:26; dx=e.mode==='slam'?10:18; sq=e.mode==='slam'?.86:.95; rot=.05; }
- if(e.state==='rush'){ torso=36; sq=.9; rot=.15; }
- if(e.state==='hurt'){ torso=-26; rot=-.12; dx=-6; }
- if(e.state==='grabbed'){ rot=-.35; sq=.95; }
- if(e.state==='knock'||e.dead){ rot=e.z>0?-.6:-Math.min(1.45,.6+(e.dead?e.deadT*3:Math.max(0,.5-e.hurtT)*2)); torso=-10; }
+function enemyPose(e){ const T=e.T, speed=Math.abs(e.vx)+Math.abs(e.vy), m=Math.min(1,speed/T.spd), st=Math.sin(e.stepT*Math.PI*2);
+ let torso=e.lean*e.face*200+st*6*m, hip=Math.sin(e.stepT*Math.PI)*9*m*Math.sqrt(T.mass), sq=1-Math.abs(Math.sin(e.stepT*Math.PI))*.05*m*T.mass+Math.sin(time*2+e.wob)*.012, rot=0, dx=0, reach=0, crouch=Math.abs(Math.cos(e.stepT*Math.PI))**6*.5*m, bobY=-Math.abs(Math.sin(e.stepT*Math.PI))*6*m, fist=0;
+ const S=e.mode==='slam'?1.6:1;
+ if(e.state==='wind'||e.state==='rushwind'){ const k=ease.inQ(Math.min(1,e.st/(T.wind||.4))); torso=-30*k*S; reach=-22*k*S; sq=1+.08*k*S; dx=-12*k; crouch=.9*k; rot=-.05*k; bobY=Math.sin(time*40)*1.5*k; }
+ if(e.state==='strike'){ const k=ease.outB(Math.min(1,e.st/.08)), r=Math.max(0,1-Math.max(0,e.st-.12)/.13); torso=(e.mode==='slam'?48:30)*k*r; dx=(e.mode==='slam'?12:22)*k; reach=(e.mode==='slam'?30:58)*k*r; sq=e.mode==='slam'?.82:.92; crouch=.6; rot=.07*k; fist=e.mode==='slam'?0:k*r; }
+ if(e.state==='rush'){ torso=44; sq=.86; rot=.2; reach=24; crouch=.5; }
+ if(e.state==='hurt'){ const k=Math.min(1,e.hurtT/.25); torso=-38*k; rot=-.2*k; dx=-10*k; reach=-16*k; }
+ if(e.state==='grabbed'){ rot=-.35+Math.sin(time*25)*.05; sq=.95; }
+ if(e.state==='knock'||e.dead){ rot=e.z>0?-.6:-Math.min(1.45,.6+(e.dead?e.deadT*3:Math.max(0,.5-e.hurtT)*2)); torso=-10; crouch=0; bobY=0; }
  if(e.state==='thrown') rot=-e.vx*.004*e.face;
- return {torso,hip,sq,rot,dx,stride:Math.sin(e.stepT*Math.PI*2)*7*m};}
+ return {torso,hip,sq,rot,dx,reach,crouch,bobY,fist,stride:st*14*m};}
 function drawEnemyImg(e,x,y,pose,alpha){ const T=e.T, img=IMG[T.img]; if(!img.width) return; const h=T.drawH, w=img.width*h/img.height;
- cx.save(); cx.translate(x+pose.dx*e.face,y); cx.rotate(pose.rot*e.face); cx.globalAlpha=alpha;
- rigDraw(img,w,h,{torso:pose.torso,hip:pose.hip,stride:pose.stride,sq:pose.sq,flip:e.face*T.srcFace}); cx.restore(); }
+ cx.save(); cx.translate(x+pose.dx*e.face,y+(pose.bobY||0)); cx.rotate(pose.rot*e.face); cx.globalAlpha=alpha;
+ rigDraw(img,w,h,{torso:pose.torso,hip:pose.hip,stride:pose.stride,sq:pose.sq,reach:pose.reach,crouch:pose.crouch,flip:e.face*T.srcFace}); cx.restore(); }
 function drawEnemy(e){
  const sx=e.x-camX, sy=e.y, T=e.T;
  shadow(sx,sy,T.w*.85, e.z>0?.3:.45);
@@ -438,7 +482,8 @@ function drawEnemy(e){
  for(const g of ghosts) if(g.e===e){ cx.save(); cx.globalCompositeOperation='lighter'; drawEnemyImg(e,g.x-camX,g.y,pose,g.life*2); cx.restore(); }
  let a=1; if(e.dead&&e.deadT>1.4) a=Math.max(0,1-(e.deadT-1.4)/.8)*(Math.floor(e.deadT*15)%2?1:.4);
  drawEnemyImg(e,sx,sy-e.z,pose,a);
- if(e.flash>0){ cx.save(); cx.globalCompositeOperation='lighter'; drawEnemyImg(e,sx,sy-e.z,pose,.6); cx.restore(); }
+ if(pose.fist>0) drawFist(sx+e.face*(10+pose.dx+pose.reach*.5),sy-e.z-T.drawH*.68,e.face,70*(.4+.6*pose.fist),T.mass>1.5?14:10,'#ff8080',Math.min(1,pose.fist*1.3));
+ if(e.flash>0){ cx.save(); cx.globalCompositeOperation='lighter'; drawEnemyImg(e,sx,sy-e.z,pose,.85); drawEnemyImg(e,sx+(Math.random()-.5)*6,sy-e.z,pose,.5); cx.restore(); }
  const tele=(e.state==='wind'||e.state==='rushwind');
  if(tele&&T.boss){ cx.save(); cx.globalAlpha=.25+.25*Math.sin(time*30); cx.fillStyle='#f00';
    if(e.state==='rushwind') cx.fillRect(Math.min(sx,sx+e.face*700),sy-30,700,40); else { cx.beginPath();cx.ellipse(sx+e.face*50,sy,T.reach+(e.mode==='slam'?70:20),26,0,0,Math.PI*2);cx.fill(); } cx.restore(); }
@@ -452,7 +497,7 @@ function drawProp(o){
  else if(o.kind==='crate'){cx.fillStyle='#8a5a2a';cx.fillRect(-20,-36,40,36);cx.strokeStyle='#4a2a10';cx.lineWidth=3;cx.strokeRect(-20,-36,40,36);cx.beginPath();cx.moveTo(-20,-36);cx.lineTo(20,0);cx.stroke();}
  else {cx.fillStyle='#2f8a4a';cx.fillRect(-6,-34,12,34);cx.fillRect(-3,-44,6,12);}
  cx.restore();
- if(!o.flying&&player.hold!==o&&Math.abs(o.x-player.x)<90&&Math.abs(o.y-player.y)<45&&state==='play'){cx.fillStyle='#fff';cx.font='bold 16px Arial';cx.textAlign='center';cx.fillText(isTouch?'זריקה ↑':'C ↑',sx,o.y-58);}
+ if(!o.flying&&player.hold!==o&&Math.abs(o.x-player.x)<90&&Math.abs(o.y-player.y)<45&&state==='play'){cx.fillStyle='#fff';cx.font='bold 16px Arial';cx.textAlign='center';cx.fillText(isTouch?'תפיסה ↑':'C ↑',sx,o.y-58);}
 }
 function drawHUD(){
  const p=player;
@@ -477,7 +522,9 @@ function drawHUD(){
  if(bossRef&&!bossRef.dead){ cx.textAlign='center'; cx.fillStyle='#000b'; cx.fillRect(W/2-200,66,400,34); cx.fillStyle='#fff'; cx.font='bold 14px Arial'; cx.fillText(bossRef.T.name,W/2,80); cx.fillStyle='#500'; cx.fillRect(W/2-190,85,380,10); cx.fillStyle='#ff3030'; cx.fillRect(W/2-190,85,380*Math.max(0,bossRef.hp)/bossRef.T.hp,10); }
  cx.restore();
  const alive=enemies.filter(e=>!e.dead).length;
- if(alive===0&&!trans&&Math.floor(time*2)%2){cx.save();cx.direction='rtl';cx.fillStyle='#ffcf3a';cx.font='bold 34px Arial';cx.textAlign='center';cx.fillText('קדימה ←',W/2,150);cx.restore();}
+ if(alive===0&&!trans&&Math.floor(time*2)%2){cx.save();cx.fillStyle='#ffcf3a';cx.strokeStyle='#000';cx.lineWidth=5;cx.font='bold 38px Arial';cx.textAlign='center';cx.direction='ltr';
+   cx.strokeText('קדימה  ➜',W/2,150);cx.fillText('קדימה  ➜',W/2,150);
+   const bx=W-60+Math.sin(time*10)*8; cx.beginPath();cx.moveTo(bx+30,270);cx.lineTo(bx-14,226);cx.lineTo(bx-14,252);cx.lineTo(bx-40,252);cx.lineTo(bx-40,288);cx.lineTo(bx-14,288);cx.lineTo(bx-14,314);cx.closePath();cx.fill();cx.stroke();cx.restore();}
  if(banner){ cx.save(); cx.direction='rtl'; cx.textAlign='center'; const k=Math.min(1,banner.life*2), sl=(1-Math.min(1,(2.4-banner.life)*4))*200;
   cx.globalAlpha=k; cx.fillStyle='#000a'; cx.fillRect(0,200,W,80); cx.font='bold 48px Arial'; cx.fillStyle=banner.boss?'#ff4040':'#ffcf3a'; cx.fillText(banner.t,W/2+sl,256); cx.restore(); }
 }
