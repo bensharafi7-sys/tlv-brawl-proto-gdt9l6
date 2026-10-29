@@ -36,3 +36,11 @@
 - Visual: held enemy lifted high above Benjo with ease-out over ~0.25s, scaled ~80%, tilted, drawn AFTER player (no "image on image"); persistent «זרוק!» hint above it.
 - Throw: higher arc, continuous spin, impact as before.
 - No new art, no music change, no fake limb animation.
+
+## V2.2 — frame animation (2026-10-29)
+- Punch (light / combo / heavy) uses discrete frames `assets/frames/punch_00..04`: startup (00,01) → active (02, hitbox only here) → recovery (03,04).
+- Hitlag on hit clamped to 2–4 frames (33–67 ms).
+- Grab/throw uses `grab_00..05`: contact (00) → lift (01) → hold lifted, enemy baked into frame (02) → throw (03) → recovery (04,05, clipped to Benjo only). V2.1.1 grab logic kept (range, 0.18s buffer, lift, throw arc/physics).
+- Tackle/hurt/walk still use the rig (no kick/hurt frames).
+- Known: in hold frames the lifted enemy is the person from the sheet, not the in-game enemy sprite (Ari QC: enemy face drift on grab).
+- Music: not included. Hook `window.BGM_SRC` reserved for Sol's BGM. Soft SFX unchanged.

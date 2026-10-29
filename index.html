@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- V2.1.1 — grab reliability + held/throw visuals (no new art, no music change) -->
+<!-- V2.2 — discrete punch + grab/throw frame cycles, state machine, hitlag 2-4f (music slot ready, not included) -->
 <html lang="he" dir="rtl">
 <head>
 <meta charset="utf-8">
@@ -76,6 +76,14 @@ const RAGE={perHit:7, perHurt:12, dur:8, spd:1.35, dmg:1.6};
 const CHARGE_MAX=.7;
 // ================= ASSETS =================
 const IMG={}; let loaded=0;
+// V2.2 discrete frames: [file, anchorX(frac, source orientation), clipRight(frac or 1)]
+const FR={punch:[[.5],[.47],[.61],[.5],[.48]].map((a,i)=>({img:null,n:'frames/punch_0'+i+'.png',ax:a[0],clip:1,src:-1})),
+ grab:[[.32,1],[.66,1],[.54,1],[.27,.55],[.24,.5],[.32,.56]].map((a,i)=>({img:null,n:'frames/grab_0'+i+'.png',ax:a[0],clip:a[1],src:1}))};
+const FR_H={punch:519/1.0,grab:400};
+FR.grab[4].dy=.1; FR.grab[3].dy=.04;
+for(const k in FR) for(const f of FR[k]){const i=new Image();i.src='assets/'+f.n;f.img=i;}
+// BGM hook (V2.2): drop assets/audio/bgm.mp3 later (Sol) — game ships without it
+window.BGM_SRC=window.BGM_SRC||null;
 for(const n of ['benjo.png','bg1_alley.jpg','bg2_garages.jpg','bg3_parking.jpg','bg4_bridge.jpg','en_thin.png','en_heavy.png','boss_alley.png','boss_bridge.png']){const i=new Image();i.onload=()=>loaded++;i.src='assets/'+n;IMG[n]=i;}
 // ================= STAGES =================
 const STAGES=[
@@ -210,7 +218,7 @@ function hitEnemy(e,a,dir){
  const kb=a.kb*rg/e.T.mass; e.vx=dir*kb;
  const superArmor=e.T.boss&&e.state==='strike'&&!a.knock;
  if(!superArmor){ if((a.knock&&(!e.T.boss||a.dmg>=14))||e.hp<=0){e.state='knock';e.vz=260+kb*.25;e.z=Math.max(e.z,1);} else e.state='hurt'; }
- freeze=Math.max(freeze,a.freeze*(rg>1?1.3:1)); shake=Math.max(shake,a.freeze*70*rg); if(a.dmg>=14) zoom=1.05;
+ freeze=Math.max(freeze,clamp(a.freeze*(rg>1?1.3:1),2/60,4/60)); /* V2.2 hitlag 2-4 frames */ shake=Math.max(shake,a.freeze*70*rg); if(a.dmg>=14) zoom=1.05;
  burst(e.x-dir*10,e.y-e.T.drawH*.6,a.dmg>10?14:7,player.rageT>0?'#ff50ff':(a.dmg>10?'#ffd040':'#fff'),260);
  sfx(a.dmg>10?'heavy':'light'); addRage(RAGE.perHit*(a.dmg>10?1.4:1));
  comboCount++; comboTimer=1.2; bestCombo=Math.max(bestCombo,comboCount);
@@ -445,6 +453,19 @@ function drawFist(x,y,face,len,r,col,alpha){ cx.save(); cx.globalAlpha=alpha; cx
  cx.fillStyle='#c98a5c'; cx.beginPath(); cx.arc(len-r*.4,0,r,0,Math.PI*2); cx.fill(); cx.stroke(); // fist
  cx.strokeStyle=col; cx.lineWidth=4; for(let i=-1;i<=1;i++){cx.beginPath();cx.moveTo(len+r*.9,i*r*.9);cx.lineTo(len+r*1.9+Math.abs(i)*-4,i*r*1.6);cx.stroke();} // impact spikes
  cx.restore(); }
+function playerFrame(p){
+ if(p.hold){ const L=p.liftT||0; return p.hold.enemy?{set:'grab',i:L<.12?0:L<.35?1:2}:null; }
+ const a=p.act; if(!a) return null; const n=a.name, d=a.d, t=p.actT;
+ if(n==='throw'){ return {set:'grab',i:t<.08?3:t<.2?4:5}; }
+ if(n==='light'||n==='light3'||n==='heavy'){
+  if(t<d.startup) return {set:'punch',i:t<d.startup*.5?0:1,ph:'startup'};
+  if(t<d.startup+d.active) return {set:'punch',i:2,ph:'active'};
+  const r=(t-d.startup-d.active)/d.recover; return {set:'punch',i:r<.5?3:4,ph:'recovery'}; }
+ return null; }
+function drawFrame(fr,x,y,face,alpha){ const f=FR[fr.set][fr.i], img=f.img; if(!img||!img.width) return false;
+ const k=PH/FR_H[fr.set]*(fr.set==='grab'?1.02:1.06), w=img.width*k, h=img.height*k, flip=face!==f.src;
+ cx.save(); cx.translate(x,y+6); if(flip) cx.scale(-1,1); cx.globalAlpha=alpha;
+ const cw=img.width*f.clip; cx.drawImage(img,0,0,cw,img.height,-w*f.ax,-h+(f.dy||0)*h,cw*k,h); cx.restore(); return true; }
 function drawPlayer(){
  const p=player, sx=p.x-camX, sy=p.y;
  shadow(sx,sy,62);
@@ -452,11 +473,12 @@ function drawPlayer(){
  for(const g of ghosts) if(!g.e){ cx.save(); cx.globalCompositeOperation='lighter'; drawBenjoAt(g.x-camX,g.y,g.face,g.pose||pose,g.life*2.2*.5); cx.restore(); }
  if(p.rageT>0){ const r=60+Math.sin(time*20)*10; const gr=cx.createRadialGradient(sx,sy-100,10,sx,sy-100,r*2); gr.addColorStop(0,'rgba(255,40,200,.45)');gr.addColorStop(1,'rgba(255,0,120,0)');cx.fillStyle=gr;cx.fillRect(sx-r*2,sy-100-r*2,r*4,r*4); }
  let a=1; if(p.inv>0&&Math.floor(p.inv*20)%2) a=.55;
- drawBenjoAt(sx,sy,p.face,pose,a);
+ const fr=playerFrame(p); p._fr=fr; const usedFr=fr&&drawFrame(fr,sx,sy,p.face,a);
+ if(!usedFr) drawBenjoAt(sx,sy,p.face,pose,a);
  if(p.hurtT>.15){ cx.save(); cx.globalCompositeOperation='lighter'; drawBenjoAt(sx,sy,p.face,pose,.7*Math.min(1,(p.hurtT-.15)*5)); cx.restore(); }
  // speed lines while charging/tackling
  if(p.charge>0||(p.act&&p.act.name==='tackle')){ cx.strokeStyle='rgba(255,255,255,.5)';cx.lineWidth=2; for(let i=0;i<6;i++){const yy=sy-30-Math.random()*160, l=40+Math.random()*80; cx.beginPath();cx.moveTo(sx-p.face*(40+Math.random()*30),yy);cx.lineTo(sx-p.face*(40+l),yy);cx.stroke();} }
- if(p.act&&p.act.name!=='throw'&&p.act.name!=='tackle'&&pose.fist>0){
+ if(!usedFr&&p.act&&p.act.name!=='throw'&&p.act.name!=='tackle'&&pose.fist>0){
   const n=p.act.name, big=n==='heavy'||n==='light3', fx=sx+p.face*(10+pose.dx+pose.reach*.5), fy=sy-PH*.70+(pose.bobY||0);
   drawFist(fx,fy,p.face,(big?96:74)*(.4+.6*pose.fist),big?15:11,p.rageT>0?'#ff60ff':(big?'#ffd040':'#ffffff'),Math.min(1,pose.fist*1.3));
  }
@@ -548,7 +570,7 @@ function render(){
   const list=[...props.filter(o=>!o.gone&&player.hold!==o).map(o=>({y:o.y,d:()=>drawProp(o)})),...enemies.filter(e=>!e.grabbed).map(e=>({y:e.y,d:()=>drawEnemy(e)})),{y:player.y,d:drawPlayer}];
   list.sort((a,b)=>a.y-b.y).forEach(o=>o.d());
   if(player.hold&&!player.hold.enemy){drawProp(player.hold);}
-  if(player.hold&&player.hold.enemy){drawEnemy(player.hold.enemy);}
+  if(player.hold&&player.hold.enemy&&!(player._fr&&player._fr.set==='grab'&&FR.grab[player._fr.i].img.width)){drawEnemy(player.hold.enemy);} /* V2.2: grab frames include lifted enemy */
   if(player.hold&&state==='play'){ const he=player.hold.enemy, top=he?he.y-he.z-he.T.drawH*.9:player.y-PH-60; const ht=isTouch?'זרוק! (תפיסה)':'זרוק! (C)';
    cx.save(); cx.direction='rtl'; cx.textAlign='center'; cx.font='bold 28px Arial'; const yy=top-18+Math.sin(time*9)*4, xx=player.x-camX;
    cx.lineWidth=6; cx.strokeStyle='#000'; cx.strokeText(ht,xx,yy); cx.fillStyle='#ff8040'; cx.fillText(ht,xx,yy); cx.restore(); }
