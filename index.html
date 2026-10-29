@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- V2.1 — procedural combat motion pass, arrow fix, grab hints, soft SFX -->
+<!-- V2.1.1 — grab reliability + held/throw visuals (no new art, no music change) -->
 <html lang="he" dir="rtl">
 <head>
 <meta charset="utf-8">
@@ -196,12 +196,15 @@ function approach(v,t,d){return v<t?Math.min(v+d,t):Math.max(v-d,t);}
 function burst(x,y,n,col,spd){for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,s=spd*(.3+Math.random());particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-80,life:.3+Math.random()*.3,col,r:2+Math.random()*3});}}
 function floatTxt(x,y,t,col){floats.push({x,y,t,col,life:.8});}
 function addRage(v){const p=player; if(p.rageT>0)return; p.rage=Math.min(100,p.rage+v); if(p.rage>=100&&!p.rageReadyShown){p.rageReadyShown=1;floatTxt(p.x,p.y-210,'זעם מוכן! (V)','#f6f');}}
-function canGrab(e,p){ if(e.dead||e.grabbed||e.T.noGrab||e.z>20) return false; const dx=(e.x-p.x)*p.face;
- if(!(dx>-25&&dx<105+e.T.w*.3&&Math.abs(e.y-p.y)<40)) return false;
- return e.t==='thin'||e.state==='hurt'||e.hurtT>0||e.hp<e.T.hp*.6; }
-function grabTarget(p){ let best=null,bd=1e9; for(const e of enemies){ if(!canGrab(e,p)) continue; const d=Math.abs(e.x-p.x)+Math.abs(e.y-p.y)*2; if(d<bd){bd=d;best=e;} } return best; }
+// V2.1.1 grab rules: bosses never; thin always; others (heavy) when hurt/stunned recently (grabOK window) or HP<60%
+function grabbable(e){ if(e.dead||e.grabbed||e.T.noGrab||e.state==='thrown'||e.z>40) return false;
+ return e.t==='thin'||e.hp<e.T.hp*.6||e.state==='hurt'||e.state==='knock'||e.hurtT>0||(e.grabOK||0)>0; }
+const GRAB_R=150, GRAB_BACK=40, GRAB_DY=60;
+function canGrab(e,p){ if(!grabbable(e)) return false; const dx=(e.x-p.x)*p.face, dy=Math.abs(e.y-p.y);
+ return dx>-GRAB_BACK&&dx<GRAB_R+e.T.w*.3&&dy<GRAB_DY; }
+function grabTarget(p){ let best=null,bd=1e9; for(const e of enemies){ if(!canGrab(e,p)) continue; const dx=(e.x-p.x)*p.face; const d=Math.hypot(e.x-p.x,(e.y-p.y)*1.6)+(dx<0?40:0); if(d<bd){bd=d;best=e;} } return best; }
 function hitEnemy(e,a,dir){
- if(e.dead) return;
+ if(e.dead) return; e.grabOK=.9;
  const rg=player.rageT>0?RAGE.dmg:1, dmg=a.dmg*rg;
  e.hp-=dmg; e.flash=.1; e.hurtT=a.stun*(e.T.boss?.5:1);
  const kb=a.kb*rg/e.T.mass; e.vx=dir*kb;
@@ -215,7 +218,7 @@ function hitEnemy(e,a,dir){
 }
 function hurtPlayer(dmg,dir,big){ const p=player; if(p.inv>0||state!=='play')return;
  p.hp-=dmg*(p.rageT>0?.6:1); p.hurtT=big?.6:.32; p.inv=.7; p.vx=dir*(big?560:330); p.act=null; p.charge=0;
- if(p.hold){ if(p.hold.enemy){p.hold.enemy.grabbed=false;p.hold.enemy.state='knock';p.hold.enemy.z=10;} else{p.hold.z=0;} p.hold=null;}
+ if(p.hold&&big){ if(p.hold.enemy){p.hold.enemy.grabbed=false;p.hold.enemy.state='knock';p.hold.enemy.z=10;} else{p.hold.z=0;} p.hold=null;}
  freeze=Math.max(freeze,.09); shake=big?16:9; burst(p.x,p.y-100,10,'#ff4040',220); sfx('hurt'); comboCount=0; addRage(RAGE.perHurt);
  if(p.hp<=0){ lives--; if(lives<=0){p.hp=0;endGame(false);} else {p.hp=P.hp;p.inv=2.5;floatTxt(p.x,p.y-200,'חיים -1','#f44');for(const e of enemies)if(!e.dead&&Math.abs(e.x-p.x)<250){e.vx=Math.sign(e.x-p.x)*500/e.T.mass;e.state='knock';e.vz=200;e.z=1;}}}}
 // ================= UPDATE =================
@@ -271,18 +274,21 @@ function update(dt){
    p.act={name:nm,d:ATK[nm],lock:true}; p.actT=0;p.hitDone=false;p.whiffed=false;p.chainOK=false; if(p.chain>=2)p.chain=-1;}
  }
  if(pressed.heavy&&!p.act&&p.hurtT<=0&&!p.hold){p.act={name:'heavy',d:ATK.heavy,lock:true};p.actT=0;p.hitDone=false;p.whiffed=false;p.chain=0;}
- if(pressed.throw&&!p.act&&p.hurtT<=0){
-  if(p.hold){
+ if(pressed.throw) p.grabBuf=.18; if(p.grabBuf>0) p.grabBuf-=dt;
+ if(p.hold&&p.grabBuf>0&&p.liftT>.35){ p.grabBuf=0; p.act=null;
+  {
    const o=p.hold; p.hold=null; o.flying=true;
-   if(o.enemy){const e=o.enemy; e.grabbed=false; e.state='thrown'; e.vx=p.face*620/Math.sqrt(e.T.mass/.75); e.vz=220; e.z=60; e.x=p.x+p.face*40; e.y=p.y;}
+   if(o.enemy){const e=o.enemy; e.grabbed=false; e.state='thrown'; e.spin=0; e.vx=p.face*620/Math.sqrt(e.T.mass/.75); e.vz=420; e.z=Math.max(e.z,90); e.x=p.x+p.face*40; e.y=p.y;}
    else {o.vx=p.face*720; o.vz=120; o.z=70; o.x=p.x+p.face*30; o.y=p.y;}
-   sfx('throw'); p.act={name:'throw',d:{startup:0,active:0,recover:.3},lock:true};p.actT=0;p.hitDone=true; p.vx-=p.face*60;
-  } else {
+   sfx('throw'); p.grabBuf=0; p.act={name:'throw',d:{startup:0,active:0,recover:.3},lock:true};p.actT=0;p.hitDone=true; p.vx-=p.face*60;
+  }
+ } else if(!p.hold&&p.grabBuf>0&&p.hurtT<=0&&(!p.act||p.act.name==='light'||p.actT>p.act.d.startup+p.act.d.active)){
+  {
    let best=null,bd=1e9;
    for(const o of props){ if(o.flying||o.gone) continue; const d=Math.abs(o.x-p.x)+Math.abs(o.y-p.y)*2; if(d<90&&d<bd){bd=d;best=o;} }
    const ge=grabTarget(p); if(ge){best={enemy:ge};}
-   if(best){ if(best.enemy){best.enemy.grabbed=true;best.enemy.state='grabbed';} p.hold=best; p.liftT=0; p.vx*=.3; floatTxt(p.x,p.y-180,best.enemy?'תפיסה!':'הרמה','#fff'); }
-   else { sfx('whiff'); }
+   if(best){ if(best.enemy){best.enemy.grabbed=true;best.enemy.state='grabbed';} p.hold=best; p.liftT=0; p.vx*=.3; floatTxt(p.x,p.y-180,best.enemy?'תפיסה!':'הרמה','#fff'); p.grabBuf=0; p.act=null; if(best.enemy) p.face=best.enemy.x>=p.x?1:p.face; sfx('heavy'); }
+   else if(p.grabBuf<=dt) { sfx('whiff'); }
   }
  }
  for(const k in pressed) pressed[k]=false; for(const k in released) released[k]=false;
@@ -293,14 +299,15 @@ function update(dt){
  if(Math.abs(p.vx)>20||Math.abs(p.vy)>20){p.stepT+=dt*(Math.abs(p.vx)+Math.abs(p.vy)*.8)/85;}
  p.bob=Math.abs(Math.sin(p.stepT*Math.PI))*Math.min(1,(Math.abs(p.vx)+Math.abs(p.vy))/P.maxSpd);
  p.stretch+=(1-p.stretch)*Math.min(1,dt*12);
- if(p.hold) p.liftT=Math.min(1,(p.liftT||0)+dt*(p.hold.enemy?4/p.hold.enemy.T.mass:4));
+ if(p.hold) p.liftT=Math.min(1,(p.liftT||0)+dt*(p.hold.enemy?4/Math.max(1,Math.sqrt(p.hold.enemy.T.mass)):4));
  if(p.inv>0)p.inv-=dt;
  if((Math.abs(p.vx)>380||p.rageT>0&&Math.abs(p.vx)>150)&&Math.random()<.35) ghosts.push({x:p.x,y:p.y,face:p.face,life:.16,pose:playerPose(p)});
- if(p.hold){ const L=p.liftT; if(p.hold.enemy){const e=p.hold.enemy; e.x=p.x+p.face*(36-10*L); e.y=p.y+1; e.z=20+70*L;} else {p.hold.x=p.x+p.face*10;p.hold.y=p.y;p.hold.z=60+90*L;} }
+ if(p.hold){ const L=p.liftT; if(p.hold.enemy){const e=p.hold.enemy; const eo=ease.outB?ease.outB(L):L; e.x=p.x+p.face*(30-8*L); e.y=p.y+1; e.z=10+(115+e.T.drawH*.25)*eo; e.face=-p.face;} else {p.hold.x=p.x+p.face*10;p.hold.y=p.y;p.hold.z=60+90*L;} }
  // ---- enemies ----
  for(const e of enemies){
   const T=e.T; e.flash=Math.max(0,e.flash-dt);
   if(e.dead){ e.deadT+=dt; }
+  if(e.grabOK>0) e.grabOK-=dt; if(e.state==='thrown') e.spin=(e.spin||0)+dt*14;
   if(e.state==='grabbed') continue;
   if(e.z>0||e.vz>0){ e.vz-=1400*dt; e.z+=e.vz*dt; if(e.z<=0){ e.z=0; if(e.vz<-250){shake=Math.max(shake,5*T.mass);burst(e.x,e.y,6,'#888',120);} e.vz=e.vz<-300?-e.vz*.25:0; if(e.state==='thrown'){e.state='knock';e.hurtT=.6;} } }
   const fr=(e.z>0)?250:(e.state==='knock'||e.dead?1100:1500);
@@ -455,7 +462,7 @@ function drawPlayer(){
  }
  // grab / throw hints
  if(state==='play'&&!p.act&&p.hurtT<=0){ let ht=null;
-  if(p.hold) ht=isTouch?'זרוק! (תפיסה)':'C זרוק!';
+  if(p.hold) ht=null;
   else if(grabTarget(p)) ht=isTouch?'תפיסה':'C תפיסה';
   if(ht){ cx.save(); cx.direction='rtl'; cx.textAlign='center'; cx.font='bold 24px Arial'; const yy=sy-PH-34+Math.sin(time*8)*4;
    cx.lineWidth=5; cx.strokeStyle='#000'; cx.strokeText(ht,sx,yy); cx.fillStyle=p.hold?'#ff8040':'#ffe060'; cx.fillText(ht,sx,yy); cx.restore(); } }
@@ -468,12 +475,13 @@ function enemyPose(e){ const T=e.T, speed=Math.abs(e.vx)+Math.abs(e.vy), m=Math.
  if(e.state==='strike'){ const k=ease.outB(Math.min(1,e.st/.08)), r=Math.max(0,1-Math.max(0,e.st-.12)/.13); torso=(e.mode==='slam'?48:30)*k*r; dx=(e.mode==='slam'?12:22)*k; reach=(e.mode==='slam'?30:58)*k*r; sq=e.mode==='slam'?.82:.92; crouch=.6; rot=.07*k; fist=e.mode==='slam'?0:k*r; }
  if(e.state==='rush'){ torso=44; sq=.86; rot=.2; reach=24; crouch=.5; }
  if(e.state==='hurt'){ const k=Math.min(1,e.hurtT/.25); torso=-38*k; rot=-.2*k; dx=-10*k; reach=-16*k; }
- if(e.state==='grabbed'){ rot=-.35+Math.sin(time*25)*.05; sq=.95; }
+ if(e.state==='grabbed'){ rot=-1.25+Math.sin(time*18)*.06; sq=.95; torso=-20; crouch=0; bobY=0; }
  if(e.state==='knock'||e.dead){ rot=e.z>0?-.6:-Math.min(1.45,.6+(e.dead?e.deadT*3:Math.max(0,.5-e.hurtT)*2)); torso=-10; crouch=0; bobY=0; }
- if(e.state==='thrown') rot=-e.vx*.004*e.face;
+ if(e.state==='thrown') rot=-(e.spin||0); 
  return {torso,hip,sq,rot,dx,reach,crouch,bobY,fist,stride:st*14*m};}
 function drawEnemyImg(e,x,y,pose,alpha){ const T=e.T, img=IMG[T.img]; if(!img.width) return; const h=T.drawH, w=img.width*h/img.height;
- cx.save(); cx.translate(x+pose.dx*e.face,y+(pose.bobY||0)); cx.rotate(pose.rot*e.face); cx.globalAlpha=alpha;
+ const held=e.state==='grabbed', sc=held?1-.2*(player&&player.liftT||0):e.state==='thrown'?.85:1;
+ cx.save(); cx.translate(x+pose.dx*e.face,y+(pose.bobY||0)); if(held||e.state==='thrown'){cx.translate(0,-h*.45*sc);cx.rotate(pose.rot*e.face);cx.scale(sc,sc);cx.translate(0,h*.45);} else cx.rotate(pose.rot*e.face); cx.globalAlpha=alpha;
  rigDraw(img,w,h,{torso:pose.torso,hip:pose.hip,stride:pose.stride,sq:pose.sq,reach:pose.reach,crouch:pose.crouch,flip:e.face*T.srcFace}); cx.restore(); }
 function drawEnemy(e){
  const sx=e.x-camX, sy=e.y, T=e.T;
@@ -537,9 +545,13 @@ function render(){
  if(shake>0) cx.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);
  drawBg();
  if(state!=='title'&&player){
-  const list=[...props.filter(o=>!o.gone&&player.hold!==o).map(o=>({y:o.y,d:()=>drawProp(o)})),...enemies.map(e=>({y:e.y+(e.grabbed?2:0),d:()=>drawEnemy(e)})),{y:player.y,d:drawPlayer}];
+  const list=[...props.filter(o=>!o.gone&&player.hold!==o).map(o=>({y:o.y,d:()=>drawProp(o)})),...enemies.filter(e=>!e.grabbed).map(e=>({y:e.y,d:()=>drawEnemy(e)})),{y:player.y,d:drawPlayer}];
   list.sort((a,b)=>a.y-b.y).forEach(o=>o.d());
   if(player.hold&&!player.hold.enemy){drawProp(player.hold);}
+  if(player.hold&&player.hold.enemy){drawEnemy(player.hold.enemy);}
+  if(player.hold&&state==='play'){ const he=player.hold.enemy, top=he?he.y-he.z-he.T.drawH*.9:player.y-PH-60; const ht=isTouch?'זרוק! (תפיסה)':'זרוק! (C)';
+   cx.save(); cx.direction='rtl'; cx.textAlign='center'; cx.font='bold 28px Arial'; const yy=top-18+Math.sin(time*9)*4, xx=player.x-camX;
+   cx.lineWidth=6; cx.strokeStyle='#000'; cx.strokeText(ht,xx,yy); cx.fillStyle='#ff8040'; cx.fillText(ht,xx,yy); cx.restore(); }
   for(const q of particles){cx.globalAlpha=Math.min(1,q.life*3);cx.fillStyle=q.col;cx.fillRect(q.x-camX-q.r/2,q.y-q.r/2,q.r,q.r);} cx.globalAlpha=1;
   cx.save(); cx.direction='rtl'; cx.textAlign='center'; cx.font='bold 26px Arial';
   for(const f of floats){cx.globalAlpha=Math.min(1,f.life*2);cx.fillStyle='#000';cx.fillText(f.t,f.x-camX+2,f.y+2);cx.fillStyle=f.col;cx.fillText(f.t,f.x-camX,f.y);} cx.restore(); cx.globalAlpha=1;

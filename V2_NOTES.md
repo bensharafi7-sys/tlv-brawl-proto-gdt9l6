@@ -28,3 +28,11 @@
 ### מגבלות שנשארו
 - זו עדיין דפורמציה של PNG יחיד. אנימציית גפיים אמיתית (ידיים/רגליים זזות) מחייבת פריימים של ספרייטים מ-Ari (idle/walk/light/heavy/hurt/knock/grab/throw לכל דמות).
 - BGM — אחרי שבן מאשר את טרק Sol.
+
+## V2.1.1 — grab/throw reliability + visuals (code only)
+- Grab: radius 150px forward, 40px behind, ±60px depth; picks closest grabbable (front-weighted). 0.18s input buffer so a tap just before reaching range still grabs; grab can cancel light-punch recovery.
+- Rules: bosses never; thin always; heavy when HP<60% or hit within last 0.9s / hurt / knocked.
+- Holding: second press always throws (after short lift); light hits no longer make you drop — only big hits.
+- Visual: held enemy lifted high above Benjo with ease-out over ~0.25s, scaled ~80%, tilted, drawn AFTER player (no "image on image"); persistent «זרוק!» hint above it.
+- Throw: higher arc, continuous spin, impact as before.
+- No new art, no music change, no fake limb animation.
